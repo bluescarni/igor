@@ -142,6 +142,9 @@ public:
     explicit parser(const ParseArgs &... parse_args) : m_nargs(build_parser_tuple(parse_args...)) {}
 
 private:
+    // Fetch the value associated to the input named
+    // argument narg. If narg is not present, this will
+    // return a const ref to a global not_provided_t object.
     template <::std::size_t I, typename T>
     decltype(auto) fetch_one_impl(const T &narg) const
     {
@@ -158,14 +161,6 @@ private:
             return fetch_one_impl<I + 1u>(narg);
         }
     }
-    // Fetch the value associated to the input named
-    // argument narg. If narg is not present, this will
-    // return a const ref to a global not_provided_t object.
-    template <typename T>
-    decltype(auto) fetch_one(const T &narg) const
-    {
-        return fetch_one_impl<0>(narg);
-    }
 
 public:
     // Get references to the values associated to the input named arguments.
@@ -175,9 +170,9 @@ public:
         if constexpr (sizeof...(Tags) == 0u) {
             return;
         } else if constexpr (sizeof...(Tags) == 1u) {
-            return fetch_one(nargs...);
+            return fetch_one_impl<0>(nargs...);
         } else {
-            return ::std::forward_as_tuple(fetch_one(nargs)...);
+            return ::std::forward_as_tuple(fetch_one_impl<0>(nargs)...);
         }
     }
 
