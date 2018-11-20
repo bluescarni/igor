@@ -67,6 +67,8 @@ auto f_02(Args &&... args)
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
     auto [a, b] = p(arg1, arg2);
+    REQUIRE(std::is_rvalue_reference_v<decltype(a)>);
+    REQUIRE(std::is_rvalue_reference_v<decltype(b)>);
     return a + b;
 }
 
