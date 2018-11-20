@@ -81,6 +81,7 @@ void missing_arg(Args && ... args)
 {
     parser p{args...};
 
+    // Look ma, structured bindings!
     auto [a, b] = p(arg1, arg2);
 
     if (!p.has(arg1)) {
