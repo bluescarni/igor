@@ -5,7 +5,6 @@ library implementing named function arguments (AKA, keyword arguments, named par
 A minimal example:
 
 ```c++
-
 #include <iostream>
 #include <string>
 
@@ -38,13 +37,56 @@ int main()
 
     return 0;
 }
-
 ```
 
 ## How does it work?
 
 Glad that you asked! A ``parser`` object identifies named arguments upon construction, and stores internally
 references to the values associated to the named arguments. Later, these references can be fecthed via
-``parser``'s call operator.
+``parser``'s call operator. Named arguments can be passed in any order and they can be associated to values
+of any type.
+
+## How do I check which named arguments were provided?
+
+Like this:
+
+```c++
+template <typename ... Args>
+void arg_check(Args && ... args)
+{
+    parser p{args...};
+
+    if (p.has(arg1)) {
+        std::cout << "arg1 was provided\n";
+    } else {
+        std::cout << "arg1 was NOT provided\n";
+    }
+
+    if (p.has(arg2)) {
+        std::cout << "arg2 was provided\n";
+    } else {
+        std::cout << "arg2 was NOT provided\n";
+    }
+}
+```
+
+If a named argument is not provided, ``parser``'s call operator on that named argument will return
+a ``const`` reference to a global object of the special type ``not_provided_t``:
+
+```c++
+#include <type_traits>
+
+template <typename ... Args>
+void missing_arg(Args && ... args)
+{
+    parser p{args...};
+
+    auto [a, b] = p(arg1, arg2);
+
+    if (!p.has(arg1)) {
+        assert(std::is_same_v<decltype(a), const not_provided_t &>);
+    }
+}
+```
 
 ![It's pronounced eye-gor](https://github.com/bluescarni/igor/raw/master/igor.gif)
