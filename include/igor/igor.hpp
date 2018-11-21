@@ -115,7 +115,7 @@ struct is_provided_impl<Tag1, tagged_container<Tag2, T>> : ::std::is_same<Tag1, 
 // Implementation of parsers' constructor.
 inline auto build_parser_tuple()
 {
-    return ::std::make_tuple();
+    return ::std::tuple{};
 }
 
 template <typename Tag, typename T, typename... Args>
