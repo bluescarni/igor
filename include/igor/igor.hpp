@@ -118,16 +118,16 @@ inline auto build_parser_tuple()
     return ::std::tuple{};
 }
 
-template <typename Tag, typename T, typename... Args>
-inline auto build_parser_tuple(const tagged_container<Tag, T> &arg0, const Args &... args)
-{
-    return ::std::tuple_cat(::std::forward_as_tuple(arg0), build_parser_tuple(args...));
-}
-
 template <typename Arg0, typename... Args>
 inline auto build_parser_tuple(const Arg0 &, const Args &... args)
 {
     return build_parser_tuple(args...);
+}
+
+template <typename Tag, typename T, typename... Args>
+inline auto build_parser_tuple(const tagged_container<Tag, T> &arg0, const Args &... args)
+{
+    return ::std::tuple_cat(::std::forward_as_tuple(arg0), build_parser_tuple(args...));
 }
 
 } // namespace detail
@@ -146,7 +146,7 @@ private:
     // argument narg. If narg is not present, this will
     // return a const ref to a global not_provided_t object.
     template <::std::size_t I, typename T>
-    decltype(auto) fetch_one_impl(const T &narg) const
+    decltype(auto) fetch_one_impl([[maybe_unused]] const T &narg) const
     {
         if constexpr (I == ::std::tuple_size_v<tuple_t>) {
             return static_cast<const not_provided_t &>(not_provided);
@@ -178,7 +178,7 @@ public:
 
 private:
     template <typename Tag>
-    static constexpr bool is_provided([[maybe_unused]] const named_argument<Tag> &narg)
+    static constexpr bool is_provided(const named_argument<Tag> &)
     {
         return ::std::disjunction_v<is_provided_impl<Tag, uncvref_t<ParseArgs>>...>;
     }
@@ -186,9 +186,14 @@ private:
 public:
     // Check if all the input named arguments nargs are present in the parser.
     template <typename... Tags>
-    static constexpr bool has([[maybe_unused]] const named_argument<Tags> &... nargs)
+    static constexpr bool has(const named_argument<Tags> &... nargs)
     {
         return sizeof...(Tags) > 0u && (... && is_provided(nargs));
+    }
+    // Detect the presence of unnamed arguments.
+    static constexpr bool has_unnamed_arguments()
+    {
+        return sizeof...(ParseArgs) > std::tuple_size_v<tuple_t>;
     }
     // Check if the parser contains named arguments other than nargs.
     template <typename... Tags>

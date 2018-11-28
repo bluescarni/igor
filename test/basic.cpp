@@ -104,3 +104,25 @@ TEST_CASE("test_00")
     REQUIRE(f_03(arg1 = 5, arg3 = -1.2, arg2 = 6) == 11);
     REQUIRE(f_03(arg3 = 5., arg2 = -5, arg1 = 6) == 1);
 }
+
+template <typename... Args>
+auto unnamed_00(Args &&... args)
+{
+    parser p{args...};
+    constexpr bool hua = p.has_unnamed_arguments();
+    return hua;
+}
+
+TEST_CASE("test_has_unnamed_args")
+{
+    REQUIRE(!unnamed_00());
+    REQUIRE(unnamed_00(1));
+    REQUIRE(unnamed_00(1, 2.));
+    REQUIRE(unnamed_00(1, 2., "dasd"));
+    REQUIRE(unnamed_00(1, arg1 = 5));
+    REQUIRE(unnamed_00(arg3 = 6, 7.));
+    REQUIRE(unnamed_00(arg3 = 6, 7., arg1 = ""));
+    REQUIRE(!unnamed_00(arg1 = 4));
+    REQUIRE(!unnamed_00(arg2 = 7, arg1 = ""));
+    REQUIRE(!unnamed_00(arg3 = 7., arg1 = "dasda"));
+}
