@@ -39,6 +39,12 @@ int main()
 }
 ```
 
+igor is partly inspired by Python's ``kwargs`` machinery, and it is meant for use in conjunction with
+variadic templates. If you cannot (or do not want to) use templates, igor might not be the best fit
+for your needs, and you might want to investigate other libraries such as
+[Boost.Parameter](https://www.boost.org/doc/libs/1_68_0/libs/parameter/doc/html/index.html) or
+[argo](https://github.com/rmpowell77/LIAW_2017_param).
+
 ## How does it work?
 
 A ``parser`` object identifies named arguments upon construction, and stores internally
@@ -116,7 +122,7 @@ void arg_dispatch(Args && ... args)
         if constexpr (std::is_same_v<uncvref_t<decltype(a)>, int>) {
             std::cout << "arg1 is an int. arg1 + 2 is: " << (a + 2) << ".\n";
         } else if constexpr (std::is_same_v<uncvref_t<decltype(a)>, std::string>) {
-            std::cout << "arg1 is a string. arg1 has has a size of " << a.size() << ".\n";
+            std::cout << "arg1 is a string. arg1 has a size of " << a.size() << ".\n";
         } else {
             std::cout << "arg1 is some type other than int or string.\n";
         }
