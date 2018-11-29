@@ -193,13 +193,16 @@ public:
     // Detect the presence of unnamed arguments.
     static constexpr bool has_unnamed_arguments()
     {
-        return sizeof...(ParseArgs) > std::tuple_size_v<tuple_t>;
+        return sizeof...(ParseArgs) > ::std::tuple_size_v<tuple_t>;
     }
     // Check if the parser contains named arguments other than nargs.
     template <typename... Tags>
     static constexpr bool has_other_than(const named_argument<Tags> &... nargs)
     {
-        return (::std::size_t(0) + ... + static_cast<::std::size_t>(is_provided(nargs))) < sizeof...(ParseArgs);
+        // NOTE: the fold expression will return how many of the nargs
+        // are provided. We then compare it with the total number of named
+        // arguments in ParseArgs (i.e., the size of the m_nargs tuple).
+        return (::std::size_t(0) + ... + static_cast<::std::size_t>(is_provided(nargs))) < ::std::tuple_size_v<tuple_t>;
     }
 
 private:

@@ -32,7 +32,7 @@ IGOR_MAKE_NAMED_ARGUMENT(arg2);
 IGOR_MAKE_NAMED_ARGUMENT(arg3);
 
 template <typename... Args>
-auto f_00(Args &&... args)
+inline auto f_00(Args &&... args)
 {
     parser p{args...};
     constexpr bool check = p.has(arg1, arg2);
@@ -44,7 +44,7 @@ auto f_00(Args &&... args)
 }
 
 template <typename... Args>
-auto f_01(Args &&... args)
+inline auto f_01(Args &&... args)
 {
     parser p{args...};
     REQUIRE(p.has(arg1, arg2));
@@ -59,7 +59,7 @@ auto f_01(Args &&... args)
 }
 
 template <typename... Args>
-auto f_02(Args &&... args)
+inline auto f_02(Args &&... args)
 {
     parser p{args...};
     REQUIRE(p.has(arg1, arg2));
@@ -73,7 +73,7 @@ auto f_02(Args &&... args)
 }
 
 template <typename... Args>
-auto f_03(Args &&... args)
+inline auto f_03(Args &&... args)
 {
     parser p{args...};
     REQUIRE(p.has(arg1, arg2));
@@ -106,7 +106,7 @@ TEST_CASE("test_00")
 }
 
 template <typename... Args>
-auto unnamed_00(Args &&... args)
+inline auto unnamed_00(Args &&... args)
 {
     parser p{args...};
     constexpr bool hua = p.has_unnamed_arguments();
@@ -125,4 +125,26 @@ TEST_CASE("test_has_unnamed_args")
     REQUIRE(!unnamed_00(arg1 = 4));
     REQUIRE(!unnamed_00(arg2 = 7, arg1 = ""));
     REQUIRE(!unnamed_00(arg3 = 7., arg1 = "dasda"));
+}
+
+template <typename... Args>
+inline auto other_than_00(Args &&... args)
+{
+    parser p{args...};
+    constexpr bool hot = p.has_other_than(arg1, arg3);
+    return hot;
+}
+
+TEST_CASE("test_has_other_than")
+{
+    REQUIRE(!other_than_00());
+    REQUIRE(!other_than_00(arg1 = 5));
+    REQUIRE(!other_than_00(arg3 = 7.8));
+    REQUIRE(!other_than_00(arg3 = "", arg1 = 1u));
+    REQUIRE(other_than_00(arg3 = "", arg1 = 1u, arg2 = nullptr));
+    REQUIRE(other_than_00(5, arg3 = "", arg1 = 1u, arg2 = nullptr));
+    REQUIRE(other_than_00(arg3 = "", arg1 = 1u, arg2 = nullptr, 6));
+    REQUIRE(other_than_00(arg1 = 1u, arg2 = nullptr));
+    REQUIRE(other_than_00(arg2 = nullptr));
+    REQUIRE(!other_than_00(42));
 }
