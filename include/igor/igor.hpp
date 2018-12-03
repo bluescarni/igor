@@ -46,6 +46,17 @@ struct tagged_container {
     T value;
 };
 
+template <typename T>
+struct is_tagged_container : std::false_type {
+};
+
+template <typename Tag, typename T>
+struct is_tagged_container<tagged_container<Tag, T>> : std::true_type {
+};
+
+template <typename T>
+inline constexpr bool is_tagged_container_v = is_tagged_container<T>::value;
+
 } // namespace detail
 
 // Class to represent a named argument.
@@ -208,6 +219,32 @@ public:
 private:
     tuple_t m_nargs;
 };
+
+template <typename Tag>
+constexpr bool pack_contains_impl(const named_argument<Tag> &)
+{
+    return false;
+}
+
+template <typename Arg0, typename... Args, typename Tag>
+constexpr bool pack_contains_impl(const named_argument<Tag> &na)
+{
+    if constexpr (std::is_rvalue_reference_v<Arg0> && is_tagged_container_v<std::remove_reference_t<Arg0>>) {
+        if constexpr (std::is_same_v<typename std::remove_reference_t<Arg0>::tag_type, Tag>) {
+            return true;
+        } else {
+            return pack_contains_impl<Args...>(na);
+        }
+    } else {
+        return pack_contains_impl<Args...>(na);
+    }
+}
+
+template <typename... Args, typename Tag>
+constexpr bool pack_contains(const named_argument<Tag> &na)
+{
+    return pack_contains_impl<Args...>(na);
+}
 
 } // namespace igor
 

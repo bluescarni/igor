@@ -148,3 +148,20 @@ TEST_CASE("test_has_other_than")
     REQUIRE(other_than_00(arg2 = nullptr));
     REQUIRE(!other_than_00(42));
 }
+
+template <typename... Args>
+inline auto p_contains(Args &&...)
+{
+    constexpr bool pc = pack_contains<Args &&...>(arg1);
+    return pc;
+}
+
+TEST_CASE("test_pack_contains")
+{
+    REQUIRE(!p_contains());
+    REQUIRE(!p_contains(1));
+    REQUIRE(!p_contains("hello"));
+    REQUIRE(p_contains(arg1 = 5, "hello"));
+    REQUIRE(p_contains(arg1 = 6.5));
+    REQUIRE(p_contains(1.5, arg1 = "hello"));
+}
