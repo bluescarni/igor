@@ -41,7 +41,7 @@ using uncvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
 // T will always be a reference of some kind.
 template <typename Tag, typename T>
 struct tagged_container {
-    static_assert(std::is_reference_v<T>, "T must always be a reference.");
+    static_assert(::std::is_reference_v<T>, "T must always be a reference.");
     using tag_type = Tag;
     T value;
 };
