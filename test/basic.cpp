@@ -35,7 +35,7 @@ template <typename... Args>
 inline auto f_00(Args &&... args)
 {
     parser p{args...};
-    constexpr bool check = p.has(arg1, arg2);
+    constexpr bool check = p.has_all(arg1, arg2);
     REQUIRE(check);
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -47,7 +47,7 @@ template <typename... Args>
 inline auto f_01(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -62,7 +62,7 @@ template <typename... Args>
 inline auto f_02(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -76,7 +76,7 @@ template <typename... Args>
 inline auto f_03(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -150,18 +150,18 @@ TEST_CASE("test_has_other_than")
 }
 
 template <typename... Args>
-inline auto p_contains(Args &&...)
+inline auto p_has(Args &&...)
 {
-    constexpr bool pc = pack_contains<Args &&...>(arg1);
+    constexpr bool pc = has<Args...>(arg1);
     return pc;
 }
 
-TEST_CASE("test_pack_contains")
+TEST_CASE("test_pack_has")
 {
-    REQUIRE(!p_contains());
-    REQUIRE(!p_contains(1));
-    REQUIRE(!p_contains("hello"));
-    REQUIRE(p_contains(arg1 = 5, "hello"));
-    REQUIRE(p_contains(arg1 = 6.5));
-    REQUIRE(p_contains(1.5, arg1 = "hello"));
+    REQUIRE(!p_has());
+    REQUIRE(!p_has(1));
+    REQUIRE(!p_has("hello"));
+    REQUIRE(p_has(arg1 = 5, "hello"));
+    REQUIRE(p_has(arg1 = 6.5));
+    REQUIRE(p_has(1.5, arg1 = "hello"));
 }
