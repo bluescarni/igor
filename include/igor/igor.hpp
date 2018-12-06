@@ -51,8 +51,6 @@ struct tagged_container {
 // Class to represent a named argument.
 template <typename Tag>
 struct named_argument {
-    using tag_type = Tag;
-
     named_argument() = default;
 
     // Make sure we don't accidentally copy/assign.
@@ -103,15 +101,6 @@ inline constexpr auto not_provided = not_provided_t{};
 inline namespace detail
 {
 
-// Implementation details of parser::is_provided().
-template <typename Tag, typename T>
-struct is_provided_impl : ::std::false_type {
-};
-
-template <typename Tag1, typename Tag2, typename T>
-struct is_provided_impl<Tag1, tagged_container<Tag2, T>> : ::std::is_same<Tag1, Tag2> {
-};
-
 // Implementation of parsers' constructor.
 inline auto build_parser_tuple()
 {
@@ -130,7 +119,64 @@ inline auto build_parser_tuple(const tagged_container<Tag, T> &arg0, const Args 
     return ::std::tuple_cat(::std::forward_as_tuple(arg0), build_parser_tuple(args...));
 }
 
+// Type trait to detect if T is a tagged container with tag Tag (and any type as second parameter).
+template <typename Tag, typename T>
+struct is_tagged_container : ::std::false_type {
+};
+
+template <typename Tag, typename T>
+struct is_tagged_container<Tag, tagged_container<Tag, T>> : ::std::true_type {
+};
+
+// Type trait to detect if T is a tagged container (regardless of the tag type or the type
+// of the second parameter).
+template <typename T>
+struct is_tagged_container_any : ::std::false_type {
+};
+
+template <typename Tag, typename T>
+struct is_tagged_container_any<tagged_container<Tag, T>> : ::std::true_type {
+};
+
 } // namespace detail
+
+// NOTE: implement some of the parser functionality as free functions,
+// which will then be wrapped by static constexpr member functions in
+// the parser class. These free functions can be used where a parser
+// object is not available (e.g., in a requires clause).
+template <typename... Args, typename Tag>
+constexpr bool has([[maybe_unused]] const named_argument<Tag> &narg)
+{
+    return (... || is_tagged_container<Tag, uncvref_t<Args>>::value);
+}
+
+template <typename... Args, typename... Tags>
+constexpr bool has_all(const named_argument<Tags> &... nargs)
+{
+    return (... && ::igor::has<Args...>(nargs));
+}
+
+template <typename... Args, typename... Tags>
+constexpr bool has_any(const named_argument<Tags> &... nargs)
+{
+    return (... || ::igor::has<Args...>(nargs));
+}
+
+template <typename... Args>
+constexpr bool has_unnamed_arguments()
+{
+    return (... || !is_tagged_container_any<uncvref_t<Args>>::value);
+}
+
+template <typename... Args, typename... Tags>
+constexpr bool has_other_than(const named_argument<Tags> &... nargs)
+{
+    // NOTE: the first fold expression will return how many of the nargs
+    // are in the pack. The second fold expression will return the total number
+    // of named arguments in the pack.
+    return (std::size_t(0) + ... + static_cast<std::size_t>(::igor::has<Args...>(nargs)))
+           < (std::size_t(0) + ... + static_cast<std::size_t>(is_tagged_container_any<uncvref_t<Args>>::value));
+}
 
 // Parser for named arguments in a function call.
 template <typename... ParseArgs>
@@ -145,13 +191,12 @@ private:
     // Fetch the value associated to the input named
     // argument narg. If narg is not present, this will
     // return a const ref to a global not_provided_t object.
-    template <::std::size_t I, typename T>
-    decltype(auto) fetch_one_impl([[maybe_unused]] const T &narg) const
+    template <::std::size_t I, typename Tag>
+    decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag> &narg) const
     {
         if constexpr (I == ::std::tuple_size_v<tuple_t>) {
             return static_cast<const not_provided_t &>(not_provided);
-        } else if constexpr (::std::is_same_v<typename uncvref_t<::std::tuple_element_t<I, tuple_t>>::tag_type,
-                                              typename T::tag_type>) {
+        } else if constexpr (::std::is_same_v<typename uncvref_t<::std::tuple_element_t<I, tuple_t>>::tag_type, Tag>) {
             if constexpr (::std::is_rvalue_reference_v<decltype(::std::get<I>(m_nargs).value)>) {
                 return ::std::move(::std::get<I>(m_nargs).value);
             } else {
@@ -175,34 +220,34 @@ public:
             return ::std::forward_as_tuple(fetch_one_impl<0>(nargs)...);
         }
     }
-
-private:
+    // Check if the input named argument na is present in the parser.
     template <typename Tag>
-    static constexpr bool is_provided(const named_argument<Tag> &)
+    static constexpr bool has(const named_argument<Tag> &narg)
     {
-        return ::std::disjunction_v<is_provided_impl<Tag, uncvref_t<ParseArgs>>...>;
+        return ::igor::has<ParseArgs...>(narg);
     }
-
-public:
     // Check if all the input named arguments nargs are present in the parser.
     template <typename... Tags>
-    static constexpr bool has(const named_argument<Tags> &... nargs)
+    static constexpr bool has_all(const named_argument<Tags> &... nargs)
     {
-        return sizeof...(Tags) > 0u && (... && is_provided(nargs));
+        return ::igor::has_all<ParseArgs...>(nargs...);
+    }
+    // Check if at least one of the input named arguments nargs is present in the parser.
+    template <typename... Tags>
+    static constexpr bool has_any(const named_argument<Tags> &... nargs)
+    {
+        return ::igor::has_any<ParseArgs...>(nargs...);
     }
     // Detect the presence of unnamed arguments.
     static constexpr bool has_unnamed_arguments()
     {
-        return sizeof...(ParseArgs) > ::std::tuple_size_v<tuple_t>;
+        return ::igor::has_unnamed_arguments<ParseArgs...>();
     }
     // Check if the parser contains named arguments other than nargs.
     template <typename... Tags>
     static constexpr bool has_other_than(const named_argument<Tags> &... nargs)
     {
-        // NOTE: the fold expression will return how many of the nargs
-        // are provided. We then compare it with the total number of named
-        // arguments in ParseArgs (i.e., the size of the m_nargs tuple).
-        return (::std::size_t(0) + ... + static_cast<::std::size_t>(is_provided(nargs))) < ::std::tuple_size_v<tuple_t>;
+        return ::igor::has_other_than<ParseArgs...>(nargs...);
     }
 
 private:

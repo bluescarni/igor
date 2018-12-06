@@ -23,7 +23,11 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <initializer_list>
+#include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 using namespace igor;
 
@@ -35,7 +39,7 @@ template <typename... Args>
 inline auto f_00(Args &&... args)
 {
     parser p{args...};
-    constexpr bool check = p.has(arg1, arg2);
+    constexpr bool check = p.has_all(arg1, arg2);
     REQUIRE(check);
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -47,7 +51,7 @@ template <typename... Args>
 inline auto f_01(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -62,7 +66,7 @@ template <typename... Args>
 inline auto f_02(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -76,7 +80,7 @@ template <typename... Args>
 inline auto f_03(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
@@ -90,7 +94,23 @@ inline auto f_03(Args &&... args)
     return a + b;
 }
 
-TEST_CASE("test_00")
+template <typename... Args>
+inline auto f_04(Args &&... args)
+{
+    parser p{args...};
+    constexpr auto ha = p.has_any(arg1, arg3);
+    return ha;
+}
+
+template <typename... Args>
+inline auto f_05(Args &&... args)
+{
+    parser p{args...};
+    REQUIRE(p.has(arg1));
+    REQUIRE(std::is_lvalue_reference_v<decltype(p(arg1))>);
+}
+
+TEST_CASE("test_has")
 {
     REQUIRE(f_00(arg1 = 5, arg2 = 6) == 11);
     REQUIRE(f_00(arg2 = -5, arg1 = 6) == 1);
@@ -103,6 +123,20 @@ TEST_CASE("test_00")
 
     REQUIRE(f_03(arg1 = 5, arg3 = -1.2, arg2 = 6) == 11);
     REQUIRE(f_03(arg3 = 5., arg2 = -5, arg1 = 6) == 1);
+
+    REQUIRE(f_04(arg1 = 5));
+    REQUIRE(f_04(arg3 = 5.6, arg1 = 5));
+    REQUIRE(f_04(arg2 = "", arg1 = 5));
+    REQUIRE(f_04(arg3 = "dsdas"));
+    REQUIRE(!f_04(arg2 = "dsdas"));
+    REQUIRE(!f_04());
+
+    {
+        int n = 5;
+        f_05(arg1 = n);
+        std::string s = "hello";
+        f_05(arg1 = s);
+    }
 }
 
 template <typename... Args>
@@ -147,4 +181,64 @@ TEST_CASE("test_has_other_than")
     REQUIRE(other_than_00(arg1 = 1u, arg2 = nullptr));
     REQUIRE(other_than_00(arg2 = nullptr));
     REQUIRE(!other_than_00(42));
+}
+
+struct move_only {
+    move_only() = default;
+    move_only(move_only &&) = default;
+
+    // Remove the copy constructor.
+    move_only(const move_only &) = delete;
+};
+
+template <typename... Args>
+inline void move_argument(Args &&... args)
+{
+    parser p{args...};
+    REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
+    [[maybe_unused]] move_only inner{std::move(p(arg1))};
+}
+
+TEST_CASE("test_move_only")
+{
+    move_only mo;
+    move_argument(arg1 = std::move(mo));
+    move_argument(arg1 = move_only{});
+}
+
+template <typename... Args>
+inline auto test_init_list(Args &&... args)
+{
+    parser p{args...};
+    return p(arg1);
+}
+
+TEST_CASE("test_init_list")
+{
+    REQUIRE((std::vector(test_init_list(arg1 = {1, 2, 3, 4})) == std::vector{1, 2, 3, 4}));
+    REQUIRE((std::vector(test_init_list(arg1 = {"hello", "world"})) == std::vector{"hello", "world"}));
+}
+
+template <typename T, typename U>
+inline void inner(T &&, U &&)
+{
+    REQUIRE(std::is_rvalue_reference_v<T &&>);
+    REQUIRE(!std::is_const_v<std::remove_reference_t<T &&>>);
+    REQUIRE(std::is_lvalue_reference_v<U &&>);
+    REQUIRE(std::is_const_v<std::remove_reference_t<U &&>>);
+}
+
+template <typename... Args>
+inline void outer(Args &&... args)
+{
+    parser p{args...};
+    auto [a, b] = p(arg1, arg2);
+    inner(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b));
+}
+
+TEST_CASE("test_perfect_forward")
+{
+    const std::string f = "foo";
+    outer(arg1 = 5, arg2 = f);
+    outer(arg2 = f, arg1 = move_only{});
 }
