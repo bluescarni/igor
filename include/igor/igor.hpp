@@ -140,6 +140,10 @@ struct is_tagged_container_any<tagged_container<Tag, T>> : ::std::true_type {
 
 } // namespace detail
 
+// NOTE: implement some of the parser functionality as free functions,
+// which will then be wrapped by static constexpr member functions in
+// the parser class. These free functions can be used where a parser
+// object is not available (e.g., in a requires clause).
 template <typename... Args, typename Tag>
 constexpr bool has([[maybe_unused]] const named_argument<Tag> &narg)
 {
@@ -149,13 +153,13 @@ constexpr bool has([[maybe_unused]] const named_argument<Tag> &narg)
 template <typename... Args, typename... Tags>
 constexpr bool has_all(const named_argument<Tags> &... nargs)
 {
-    return (... && has<Args...>(nargs));
+    return (... && ::igor::has<Args...>(nargs));
 }
 
 template <typename... Args, typename... Tags>
 constexpr bool has_any(const named_argument<Tags> &... nargs)
 {
-    return (... || has<Args...>(nargs));
+    return (... || ::igor::has<Args...>(nargs));
 }
 
 template <typename... Args>
@@ -170,7 +174,7 @@ constexpr bool has_other_than(const named_argument<Tags> &... nargs)
     // NOTE: the first fold expression will return how many of the nargs
     // are in the pack. The second fold expression will return the total number
     // of named arguments in the pack.
-    return (std::size_t(0) + ... + static_cast<std::size_t>(has<Args...>(nargs)))
+    return (std::size_t(0) + ... + static_cast<std::size_t>(::igor::has<Args...>(nargs)))
            < (std::size_t(0) + ... + static_cast<std::size_t>(is_tagged_container_any<uncvref_t<Args>>::value));
 }
 
