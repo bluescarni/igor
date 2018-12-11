@@ -1,5 +1,8 @@
 # igor
 
+![language](https://img.shields.io/badge/language-C%2B%2B17-red.svg?style=for-the-badge)
+![license](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)
+
 igor (pronounced *eye-gor*) is a small, unpretentious, self-contained and header-only C++17
 library implementing named function arguments (AKA keyword arguments, named parameters, etc.).
 A minimal example:
