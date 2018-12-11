@@ -96,7 +96,7 @@ struct not_provided_t {
 
 // Non-provided named arguments will return a const reference
 // to this global object.
-inline constexpr auto not_provided = not_provided_t{};
+inline constexpr not_provided_t not_provided;
 
 inline namespace detail
 {
