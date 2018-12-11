@@ -242,3 +242,24 @@ TEST_CASE("test_perfect_forward")
     outer(arg1 = 5, arg2 = f);
     outer(arg2 = f, arg1 = move_only{});
 }
+
+template <typename... Args>
+inline bool not_provided_test(Args &&... args)
+{
+    parser p{args...};
+    auto [a, b] = p(arg1, arg2);
+    if constexpr (std::is_same_v<decltype(a), const not_provided_t &>) {
+        return &a == &not_provided;
+    } else {
+        return false;
+    }
+}
+
+TEST_CASE("test_not_provided")
+{
+    REQUIRE(not_provided_test());
+    REQUIRE(not_provided_test(arg2 = 5));
+    REQUIRE(not_provided_test(arg3 = "dsada", arg2 = 5));
+    REQUIRE(!not_provided_test(arg1 = 5.));
+    REQUIRE(!not_provided_test(arg3 = 6, arg1 = 5.));
+}
