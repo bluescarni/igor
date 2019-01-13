@@ -263,3 +263,29 @@ TEST_CASE("test_not_provided")
     REQUIRE(!not_provided_test(arg1 = 5.));
     REQUIRE(!not_provided_test(arg3 = 6, arg1 = 5.));
 }
+
+template <typename... Args>
+inline bool has_duplicates_test(Args &&... args)
+{
+    parser p{args...};
+    if constexpr (p.has_duplicates()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+TEST_CASE("test_has_duplicates")
+{
+    REQUIRE(!has_duplicates_test());
+    REQUIRE(!has_duplicates_test(1));
+    REQUIRE(!has_duplicates_test(1, "adsda"));
+    REQUIRE(!has_duplicates_test(1, "adsda", 3.5));
+    REQUIRE(!has_duplicates_test(arg1 = 5, "adsda", arg3 = 56.));
+    REQUIRE(!has_duplicates_test(arg1 = 5, arg2 = "dasda", arg3 = 56.));
+    REQUIRE(has_duplicates_test(arg1 = 5, arg1 = 6));
+    REQUIRE(has_duplicates_test(arg2 = 4, arg2 = 56, arg1 = 5, arg1 = 6));
+    REQUIRE(has_duplicates_test(arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
+    REQUIRE(has_duplicates_test(arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6, arg3 = 5.6));
+    REQUIRE(has_duplicates_test(arg3 = "Hello", arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
+}

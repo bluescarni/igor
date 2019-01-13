@@ -166,9 +166,33 @@ constexpr bool has_other_than(const ::igor::named_argument<Tags> &... nargs)
     // NOTE: the first fold expression will return how many of the nargs
     // are in the pack. The second fold expression will return the total number
     // of named arguments in the pack.
-    return (std::size_t(0) + ... + static_cast<std::size_t>(::igor::has<Args...>(nargs)))
-           < (std::size_t(0) + ...
-              + static_cast<std::size_t>(::igor::is_tagged_container_any<::igor::uncvref_t<Args>>::value));
+    return (::std::size_t(0) + ... + static_cast<::std::size_t>(::igor::has<Args...>(nargs)))
+           < (::std::size_t(0) + ...
+              + static_cast<::std::size_t>(::igor::is_tagged_container_any<::igor::uncvref_t<Args>>::value));
+}
+
+inline namespace detail
+{
+
+// Check if T is a named argument which appears more than once in Args.
+template <typename T, typename... Args>
+constexpr bool is_repeated_named_argument()
+{
+    if constexpr (::igor::is_tagged_container_any<::igor::uncvref_t<T>>::value) {
+        return (::std::size_t(0) + ...
+                + static_cast<::std::size_t>(::std::is_same_v<::igor::uncvref_t<T>, ::igor::uncvref_t<Args>>))
+               > 1u;
+    } else {
+        return false;
+    }
+}
+
+} // namespace detail
+
+template <typename... Args>
+constexpr bool has_duplicates()
+{
+    return (... || ::igor::is_repeated_named_argument<Args, Args...>());
 }
 
 // Parser for named arguments in a function call.
@@ -242,6 +266,12 @@ public:
     static constexpr bool has_other_than(const ::igor::named_argument<Tags> &... nargs)
     {
         return ::igor::has_other_than<ParseArgs...>(nargs...);
+    }
+    // Check if the parser contains duplicate named arguments (that is, check
+    // if at least one named argument appears more than once).
+    static constexpr bool has_duplicates()
+    {
+        return ::igor::has_duplicates<ParseArgs...>();
     }
 
 private:
