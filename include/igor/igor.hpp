@@ -51,14 +51,6 @@ struct tagged_container {
 // Class to represent a named argument.
 template <typename Tag>
 struct named_argument {
-    named_argument() = default;
-
-    // Make sure we don't accidentally copy/assign.
-    named_argument(const named_argument &) = delete;
-    named_argument(named_argument &&) = delete;
-    named_argument &operator=(const named_argument &) = delete;
-    named_argument &operator=(named_argument &&) = delete;
-
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
     template <typename T, ::std::enable_if_t<!::std::is_same_v<named_argument, uncvref_t<T>>, int> = 0>
     auto operator=(T &&x) const
