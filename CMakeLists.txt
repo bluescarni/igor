@@ -1,11 +1,4 @@
-cmake_minimum_required(VERSION 3.3.0)
-
-project(igor VERSION 0.1 LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
-
-message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
-message(STATUS "igor version: ${igor_VERSION}")
+cmake_minimum_required(VERSION 3.8.0)
 
 # Set default build type to "Release".
 if(NOT CMAKE_BUILD_TYPE)
@@ -13,6 +6,13 @@ if(NOT CMAKE_BUILD_TYPE)
 		"Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
 	FORCE)
 endif()
+
+project(igor VERSION 0.1.0 LANGUAGES CXX)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
+
+message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "igor version: ${igor_VERSION}")
 
 # The build options.
 option(IGOR_BUILD_TESTS "Build unit tests." OFF)
