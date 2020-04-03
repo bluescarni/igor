@@ -93,24 +93,6 @@ inline constexpr not_provided_t not_provided;
 namespace detail
 {
 
-// Implementation of parsers' constructor.
-inline auto build_parser_tuple()
-{
-    return ::std::tuple{};
-}
-
-template <typename Arg0, typename... Args>
-inline auto build_parser_tuple(const Arg0 &, const Args &... args)
-{
-    return detail::build_parser_tuple(args...);
-}
-
-template <typename Tag, typename T, typename... Args>
-inline auto build_parser_tuple(const tagged_container<Tag, T> &arg0, const Args &... args)
-{
-    return ::std::tuple_cat(::std::forward_as_tuple(arg0), detail::build_parser_tuple(args...));
-}
-
 // Type trait to detect if T is a tagged container with tag Tag (and any type as second parameter).
 template <typename Tag, typename T>
 struct is_tagged_container : ::std::false_type {
@@ -129,6 +111,24 @@ struct is_tagged_container_any : ::std::false_type {
 template <typename Tag, typename T>
 struct is_tagged_container_any<tagged_container<Tag, T>> : ::std::true_type {
 };
+
+// Implementation of parsers' constructor.
+// This function will take a set of input arguments
+// (as const ref) and will filter out the named arguments
+// (which are returned as a tuple of const references).
+template <typename... Args>
+inline auto build_parser_tuple(const Args &... args)
+{
+    [[maybe_unused]] auto filter_na = [](const auto &x) {
+        if constexpr (is_tagged_container_any<uncvref_t<decltype(x)>>::value) {
+            return ::std::forward_as_tuple(x);
+        } else {
+            return ::std::tuple{};
+        }
+    };
+
+    return ::std::tuple_cat(filter_na(args)...);
+}
 
 } // namespace detail
 
