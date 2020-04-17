@@ -230,7 +230,7 @@ int main()
 
 Pretty good. One of igor's design goals is to make the handling of named arguments as efficient
 as possible. Ideally, functions with and without named arguments should compile to identical binary code.
-You can see that, at least in a couple of simple examples, this is indeed the case: https://godbolt.org/z/EUz-Lk
+You can see that, at least in a couple of simple examples, this is indeed the case: https://godbolt.org/z/tQKJLT
 (e.g., look for the ``add_int()`` and ``add_int_igor()`` functions in the generated assembly).
 
 ## I am convinced. How do I get it?
