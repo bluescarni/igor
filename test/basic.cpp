@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include <iostream>
+
 #include <igor/igor.hpp>
 
 #include "catch.hpp"
@@ -37,6 +39,12 @@ IGOR_MAKE_NAMED_ARGUMENT(arg3);
 template <typename... Args>
 inline auto f_00(Args &&... args)
 {
+    constexpr auto plat = detail::make_type_id_arr<Args...>();
+    std::cout << plat.size() << '\n';
+    for (auto p : plat) {
+        std::cout << p.first << ", " << p.second << '\n';
+    }
+
     parser p{args...};
     constexpr bool check = p.has_all(arg1, arg2);
     REQUIRE(check);

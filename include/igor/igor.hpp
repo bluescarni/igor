@@ -21,6 +21,7 @@
 #ifndef IGOR_IGOR_HPP
 #define IGOR_IGOR_HPP
 
+#include <array>
 #include <cstddef>
 #include <initializer_list>
 #include <tuple>
@@ -128,6 +129,44 @@ inline auto build_parser_tuple(const Args &... args)
     };
 
     return ::std::tuple_cat(filter_na(args)...);
+}
+
+template <typename T>
+inline constexpr int type_id_impl = 0;
+
+template <typename T>
+constexpr const void *type_id()
+{
+    return &type_id_impl<T>;
+}
+
+template <typename T>
+struct type_c {
+    using type = T;
+};
+
+template <typename... Args, ::std::size_t... I>
+constexpr auto tuple_to_arr(const ::std::tuple<Args...> &t, ::std::index_sequence<I...>)
+{
+    return ::std::array{::std::make_pair(I, ::std::get<I>(t))...};
+}
+
+template <typename... Args>
+constexpr auto make_type_id_arr()
+{
+    [[maybe_unused]] auto filter_tc = [](const auto &t) {
+        using tp = typename uncvref_t<decltype(t)>::type;
+
+        if constexpr (is_tagged_container_any<tp>::value) {
+            return ::std::tuple(type_id<typename tp::tag_type>());
+        } else {
+            return ::std::tuple{};
+        }
+    };
+
+    auto tup = ::std::tuple_cat(filter_tc(type_c<Args>{})...);
+
+    return tuple_to_arr(tup, ::std::make_index_sequence<::std::tuple_size_v<decltype(tup)>>{});
 }
 
 } // namespace detail
