@@ -16,10 +16,9 @@ A minimal example:
 using namespace igor;
 
 // Create a named argument called "arg1".
-struct arg1_tag {};
-inline constexpr auto arg1 = named_argument<arg1_tag>{};
+inline constexpr auto arg1 = named_argument<struct arg1_tag>{};
 
-// You can also use a macro (ew, gross!) for brevity.
+// You can also use a macro (ew, gross!).
 IGOR_MAKE_NAMED_ARGUMENT(arg2);
 
 // A variadic function accepting named arguments.
