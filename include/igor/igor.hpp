@@ -88,14 +88,14 @@ struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<Explic
 
     // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type 
     template <typename T, ::std::enable_if_t<::std::is_same_v<T&&, ExplicitType>, int> = 0>
-    auto operator=(T &&x) const
+    constexpr auto operator=(T &&x) const
     {
         return detail::tagged_container<Tag, ExplicitType>{::std::forward<T>(x)};
     }
 
     // NOTE: enable implicit conversion with curly braces
     // and copy-list/aggregate initialization with double curly braces
-    auto operator=(detail::tagged_container<Tag, ExplicitType>&& tc) const
+    constexpr auto operator=(detail::tagged_container<Tag, ExplicitType>&& tc) const
     {
         return std::move(tc);
     }
