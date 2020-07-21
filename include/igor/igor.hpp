@@ -86,8 +86,8 @@ struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<Explic
     static_assert(::std::is_reference_v<ExplicitType>, "ExplicitType must always be a reference.");
     using value_type = ExplicitType;
 
-    // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type 
-    template <typename T, ::std::enable_if_t<::std::is_same_v<T&&, ExplicitType>, int> = 0>
+    // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type
+    template <typename T, ::std::enable_if_t<::std::is_same_v<T &&, ExplicitType>, int> = 0>
     constexpr auto operator=(T &&x) const
     {
         return detail::tagged_container<Tag, ExplicitType>{::std::forward<T>(x)};
@@ -95,13 +95,13 @@ struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<Explic
 
     // NOTE: enable implicit conversion with curly braces
     // and copy-list/aggregate initialization with double curly braces
-    constexpr auto operator=(detail::tagged_container<Tag, ExplicitType>&& tc) const
+    constexpr auto operator=(detail::tagged_container<Tag, ExplicitType> &&tc) const
     {
         return std::move(tc);
     }
 
-    template<typename T, ::std::enable_if_t<!::std::is_same_v<T&&, ExplicitType>, int> = 0>
-    auto operator=(T&&) const = delete; // please use {...} to typed argument implicit conversion
+    template <typename T, ::std::enable_if_t<!::std::is_same_v<T &&, ExplicitType>, int> = 0>
+    auto operator=(T &&) const = delete; // please use {...} to typed argument implicit conversion
 };
 
 // Type representing a named argument which
@@ -230,7 +230,7 @@ private:
     // Fetch the value associated to the input named
     // argument narg. If narg is not present, this will
     // return a const ref to a global not_provided_t object.
-    template <::std::size_t I, typename Tag>
+    template <::std::size_t I, typename Tag, typename ExplicitType>
     constexpr decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg) const
     {
         if constexpr (I == ::std::tuple_size_v<tuple_t>) {
@@ -249,7 +249,7 @@ private:
 
 public:
     // Get references to the values associated to the input named arguments.
-    template <typename... Tags>
+    template <typename... Tags, typename ExplicitTypes>
     constexpr decltype(auto) operator()([[maybe_unused]] const named_argument<Tags, ExplicitTypes> &... nargs) const
     {
         if constexpr (sizeof...(Tags) == 0u) {
