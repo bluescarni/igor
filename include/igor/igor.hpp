@@ -249,7 +249,7 @@ private:
 
 public:
     // Get references to the values associated to the input named arguments.
-    template <typename... Tags, typename ExplicitTypes>
+    template <typename... Tags, typename... ExplicitTypes>
     constexpr decltype(auto) operator()([[maybe_unused]] const named_argument<Tags, ExplicitTypes> &... nargs) const
     {
         if constexpr (sizeof...(Tags) == 0u) {
