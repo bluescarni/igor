@@ -53,29 +53,29 @@ template <typename Tag, typename ExplicitType = void, typename VoidCondition = v
 struct named_argument {
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
     template <typename T, ::std::enable_if_t<!::std::is_same_v<named_argument, detail::uncvref_t<T>>, int> = 0>
-    auto operator=(T &&x) const
+    constexpr auto operator=(T &&x) const
     {
         return detail::tagged_container<Tag, T &&>{::std::forward<T>(x)};
     }
 
     // Add overloads for std::initializer_list as well.
     template <typename T>
-    auto operator=(const ::std::initializer_list<T> &l) const
+    constexpr auto operator=(const ::std::initializer_list<T> &l) const
     {
         return detail::tagged_container<Tag, const ::std::initializer_list<T> &>{l};
     }
     template <typename T>
-    auto operator=(::std::initializer_list<T> &l) const
+    constexpr auto operator=(::std::initializer_list<T> &l) const
     {
         return detail::tagged_container<Tag, ::std::initializer_list<T> &>{l};
     }
     template <typename T>
-    auto operator=(::std::initializer_list<T> &&l) const
+    constexpr auto operator=(::std::initializer_list<T> &&l) const
     {
         return detail::tagged_container<Tag, ::std::initializer_list<T> &&>{::std::move(l)};
     }
     template <typename T>
-    auto operator=(const ::std::initializer_list<T> &&l) const
+    constexpr auto operator=(const ::std::initializer_list<T> &&l) const
     {
         return detail::tagged_container<Tag, const ::std::initializer_list<T> &&>{::std::move(l)};
     }
@@ -140,7 +140,7 @@ struct is_tagged_container_any<tagged_container<Tag, T>> : ::std::true_type {
 // (as const ref) and will filter out the named arguments
 // (which are returned as a tuple of const references).
 template <typename... Args>
-inline auto build_parser_tuple(const Args &... args)
+constexpr inline auto build_parser_tuple(const Args &... args)
 {
     [[maybe_unused]] auto filter_na = [](const auto &x) {
         if constexpr (is_tagged_container_any<uncvref_t<decltype(x)>>::value) {
@@ -224,14 +224,14 @@ class parser
     using tuple_t = decltype(detail::build_parser_tuple(::std::declval<const ParseArgs &>()...));
 
 public:
-    explicit parser(const ParseArgs &... parse_args) : m_nargs(detail::build_parser_tuple(parse_args...)) {}
+    constexpr explicit parser(const ParseArgs &... parse_args) : m_nargs(detail::build_parser_tuple(parse_args...)) {}
 
 private:
     // Fetch the value associated to the input named
     // argument narg. If narg is not present, this will
     // return a const ref to a global not_provided_t object.
-    template <::std::size_t I, typename Tag, typename ExplicitType>
-    decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg) const
+    template <::std::size_t I, typename Tag>
+    constexpr decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg) const
     {
         if constexpr (I == ::std::tuple_size_v<tuple_t>) {
             return static_cast<const not_provided_t &>(not_provided);
@@ -249,8 +249,8 @@ private:
 
 public:
     // Get references to the values associated to the input named arguments.
-    template <typename... Tags, typename... ExplicitTypes>
-    decltype(auto) operator()([[maybe_unused]] const named_argument<Tags, ExplicitTypes> &... nargs) const
+    template <typename... Tags>
+    constexpr decltype(auto) operator()([[maybe_unused]] const named_argument<Tags, ExplicitTypes> &... nargs) const
     {
         if constexpr (sizeof...(Tags) == 0u) {
             return;

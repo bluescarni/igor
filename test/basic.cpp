@@ -294,6 +294,28 @@ TEST_CASE("test_has_duplicates")
     REQUIRE(has_duplicates_test(arg3 = "Hello", arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
 }
 
+template<typename... Args>
+inline constexpr auto sum(Args &&... args)
+{
+    parser p{args...};
+    
+    if constexpr(!p.has_all(arg1, arg2, arg3))
+        return -1;
+    else {
+        auto [a1, a2, a3] = p(arg1, arg2, arg3);
+        return a1 + a2 * a3;
+    }
+}
+
+TEST_CASE("constexprness")
+{
+    constexpr auto resultOfSum = sum(arg2 = 8, arg1 = 0.5, arg3 = 7);
+    constexpr auto notEnoughArgs = sum(arg3 = 4, arg1 = 6);
+
+    REQUIRE(resultOfSum == 56.5);
+    REQUIRE(notEnoughArgs == -1);
+}
+  
 template <typename... Args>
 inline bool has_only_cstring_allowed_test(Args &&... args)
 {
