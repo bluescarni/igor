@@ -281,8 +281,6 @@ private:
 
 // Handy macro (ew) for the definition of a named argument.
 #define IGOR_MAKE_NAMED_ARGUMENT(name)                                                                                 \
-    struct name##_tag {                                                                                                \
-    };                                                                                                                 \
-    inline constexpr auto name = ::igor::named_argument<name##_tag> {}
+    inline constexpr auto name = ::igor::named_argument<struct name##_tag> {}
 
 #endif
