@@ -49,7 +49,7 @@ struct tagged_container {
 } // namespace detail
 
 // Class to represent a named argument.
-template <typename Tag>
+template <typename Tag, typename ExplicitType = void, typename VoidCondition = void>
 struct named_argument {
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
     template <typename T, ::std::enable_if_t<!::std::is_same_v<named_argument, detail::uncvref_t<T>>, int> = 0>
@@ -79,6 +79,29 @@ struct named_argument {
     {
         return detail::tagged_container<Tag, const ::std::initializer_list<T> &&>{::std::move(l)};
     }
+};
+
+template <typename Tag, typename ExplicitType>
+struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<ExplicitType, void>>> {
+    static_assert(::std::is_reference_v<ExplicitType>, "ExplicitType must always be a reference.");
+    using value_type = ExplicitType;
+
+    // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type 
+    template <typename T, ::std::enable_if_t<::std::is_same_v<T&&, ExplicitType>, int> = 0>
+    constexpr auto operator=(T &&x) const
+    {
+        return detail::tagged_container<Tag, ExplicitType>{::std::forward<T>(x)};
+    }
+
+    // NOTE: enable implicit conversion with curly braces
+    // and copy-list/aggregate initialization with double curly braces
+    constexpr auto operator=(detail::tagged_container<Tag, ExplicitType>&& tc) const
+    {
+        return std::move(tc);
+    }
+
+    template<typename T, ::std::enable_if_t<!::std::is_same_v<T&&, ExplicitType>, int> = 0>
+    auto operator=(T&&) const = delete; // please use {...} to typed argument implicit conversion
 };
 
 // Type representing a named argument which
@@ -136,20 +159,20 @@ inline auto build_parser_tuple(const Args &... args)
 // which will then be wrapped by static constexpr member functions in
 // the parser class. These free functions can be used where a parser
 // object is not available (e.g., in a requires clause).
-template <typename... Args, typename Tag>
-constexpr bool has([[maybe_unused]] const named_argument<Tag> &narg)
+template <typename... Args, typename Tag, typename ExplicitType>
+constexpr bool has([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg)
 {
     return (... || detail::is_tagged_container<Tag, detail::uncvref_t<Args>>::value);
 }
 
-template <typename... Args, typename... Tags>
-constexpr bool has_all(const named_argument<Tags> &... nargs)
+template <typename... Args, typename... Tags, typename... ExplicitTypes>
+constexpr bool has_all(const named_argument<Tags, ExplicitTypes> &... nargs)
 {
     return (... && ::igor::has<Args...>(nargs));
 }
 
-template <typename... Args, typename... Tags>
-constexpr bool has_any(const named_argument<Tags> &... nargs)
+template <typename... Args, typename... Tags, typename... ExplicitTypes>
+constexpr bool has_any(const named_argument<Tags, ExplicitTypes> &... nargs)
 {
     return (... || ::igor::has<Args...>(nargs));
 }
@@ -160,8 +183,8 @@ constexpr bool has_unnamed_arguments()
     return (... || !detail::is_tagged_container_any<detail::uncvref_t<Args>>::value);
 }
 
-template <typename... Args, typename... Tags>
-constexpr bool has_other_than(const named_argument<Tags> &... nargs)
+template <typename... Args, typename... Tags, typename... ExplicitTypes>
+constexpr bool has_other_than(const named_argument<Tags, ExplicitTypes> &... nargs)
 {
     // NOTE: the first fold expression will return how many of the nargs
     // are in the pack. The second fold expression will return the total number
@@ -207,8 +230,8 @@ private:
     // Fetch the value associated to the input named
     // argument narg. If narg is not present, this will
     // return a const ref to a global not_provided_t object.
-    template <::std::size_t I, typename Tag>
-    decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag> &narg) const
+    template <::std::size_t I, typename Tag, typename ExplicitType>
+    decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg) const
     {
         if constexpr (I == ::std::tuple_size_v<tuple_t>) {
             return static_cast<const not_provided_t &>(not_provided);
@@ -226,8 +249,8 @@ private:
 
 public:
     // Get references to the values associated to the input named arguments.
-    template <typename... Tags>
-    decltype(auto) operator()([[maybe_unused]] const named_argument<Tags> &... nargs) const
+    template <typename... Tags, typename... ExplicitTypes>
+    decltype(auto) operator()([[maybe_unused]] const named_argument<Tags, ExplicitTypes> &... nargs) const
     {
         if constexpr (sizeof...(Tags) == 0u) {
             return;
@@ -238,20 +261,20 @@ public:
         }
     }
     // Check if the input named argument na is present in the parser.
-    template <typename Tag>
-    static constexpr bool has(const named_argument<Tag> &narg)
+    template <typename Tag, typename ExplicitType>
+    static constexpr bool has(const named_argument<Tag, ExplicitType> &narg)
     {
         return ::igor::has<ParseArgs...>(narg);
     }
     // Check if all the input named arguments nargs are present in the parser.
-    template <typename... Tags>
-    static constexpr bool has_all(const named_argument<Tags> &... nargs)
+    template <typename... Tags, typename... ExplicitTypes>
+    static constexpr bool has_all(const named_argument<Tags, ExplicitTypes> &... nargs)
     {
         return ::igor::has_all<ParseArgs...>(nargs...);
     }
     // Check if at least one of the input named arguments nargs is present in the parser.
-    template <typename... Tags>
-    static constexpr bool has_any(const named_argument<Tags> &... nargs)
+    template <typename... Tags, typename... ExplicitTypes>
+    static constexpr bool has_any(const named_argument<Tags, ExplicitTypes> &... nargs)
     {
         return ::igor::has_any<ParseArgs...>(nargs...);
     }
@@ -261,8 +284,8 @@ public:
         return ::igor::has_unnamed_arguments<ParseArgs...>();
     }
     // Check if the parser contains named arguments other than nargs.
-    template <typename... Tags>
-    static constexpr bool has_other_than(const named_argument<Tags> &... nargs)
+    template <typename... Tags, typename... ExplicitTypes>
+    static constexpr bool has_other_than(const named_argument<Tags, ExplicitTypes> &... nargs)
     {
         return ::igor::has_other_than<ParseArgs...>(nargs...);
     }

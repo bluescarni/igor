@@ -33,6 +33,8 @@ using namespace igor;
 IGOR_MAKE_NAMED_ARGUMENT(arg1);
 IGOR_MAKE_NAMED_ARGUMENT(arg2);
 IGOR_MAKE_NAMED_ARGUMENT(arg3);
+inline constexpr auto arg4 = ::igor::named_argument<struct arg4_tag, const char*&&> {};
+inline constexpr auto arg5 = ::igor::named_argument<struct arg5_tag, const double&> {};
 
 template <typename... Args>
 inline auto f_00(Args &&... args)
@@ -79,11 +81,12 @@ template <typename... Args>
 inline auto f_03(Args &&... args)
 {
     parser p{args...};
-    REQUIRE(p.has_all(arg1, arg2));
+    REQUIRE(p.has_all(arg1, arg5, arg2));
     REQUIRE(p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg2))>);
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg3))>);
+    REQUIRE(std::is_lvalue_reference_v<decltype(p(arg5))>);
     constexpr bool check = p.has_other_than(arg1, arg2);
     REQUIRE(check);
     auto &&a = p(arg1);
@@ -97,7 +100,7 @@ template <typename... Args>
 inline auto f_04(Args &&... args)
 {
     parser p{args...};
-    constexpr auto ha = p.has_any(arg1, arg3);
+    constexpr auto ha = p.has_any(arg1, arg3, arg5);
     return ha;
 }
 
@@ -120,14 +123,16 @@ TEST_CASE("test_has")
     REQUIRE(f_02(arg1 = 5, arg2 = 6) == 11);
     REQUIRE(f_02(arg2 = -5, arg1 = 6) == 1);
 
-    REQUIRE(f_03(arg1 = 5, arg3 = -1.2, arg2 = 6) == 11);
-    REQUIRE(f_03(arg3 = 5., arg2 = -5, arg1 = 6) == 1);
+    REQUIRE(f_03(arg1 = 5, arg5 = {0.0}, arg3 = -1.2, arg2 = 6) == 11);
+    REQUIRE(f_03(arg3 = 5., arg2 = -5, arg1 = 6, arg5 = {0.0}) == 1);
 
     REQUIRE(f_04(arg1 = 5));
     REQUIRE(f_04(arg3 = 5.6, arg1 = 5));
     REQUIRE(f_04(arg2 = "", arg1 = 5));
     REQUIRE(f_04(arg3 = "dsdas"));
+    REQUIRE(f_04(arg5 = {0.0}));
     REQUIRE(!f_04(arg2 = "dsdas"));
+    REQUIRE(!f_04(arg4 = {nullptr}));
     REQUIRE(!f_04());
 
     {
@@ -287,4 +292,46 @@ TEST_CASE("test_has_duplicates")
     REQUIRE(has_duplicates_test(arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
     REQUIRE(has_duplicates_test(arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6, arg3 = 5.6));
     REQUIRE(has_duplicates_test(arg3 = "Hello", arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
+}
+
+template <typename... Args>
+inline bool has_only_cstring_allowed_test(Args &&... args)
+{
+    parser p{args...};
+    REQUIRE((!p.has(arg4) || std::is_same_v<decltype(p(arg4)), const char*&&>));
+    return p.has(arg4);
+}
+
+template <typename... Args>
+inline bool has_only_cdoubleref_allowed_test(Args &&... args)
+{
+    parser p{args...};
+    REQUIRE((!p.has(arg5) || std::is_same_v<decltype(p(arg5)), const double&>));
+    return p.has(arg5);
+}
+
+TEST_CASE("explicit_typed_arguments")
+{
+    const char* testStr = "hello";
+    double d = 0.0;
+    const double cd = d;
+
+    // "hello" is const char[6] &&, not const char*&&
+    REQUIRE(!std::is_assignable_v<decltype(arg4), int>);
+    REQUIRE(!std::is_assignable_v<decltype(arg4), decltype("hello")>);
+    REQUIRE(!std::is_assignable_v<decltype(arg4), decltype((testStr))>);
+    REQUIRE(has_only_cstring_allowed_test(arg4 = static_cast<const char*>("hello")));
+    REQUIRE(has_only_cstring_allowed_test(arg4 = {"hello"}));
+    REQUIRE(has_only_cstring_allowed_test(arg4 = std::move(testStr)));
+    REQUIRE(!has_only_cstring_allowed_test());
+
+    REQUIRE(!std::is_assignable_v<decltype(arg5), const char*>);
+    REQUIRE(!std::is_assignable_v<decltype(arg5), int>);
+    REQUIRE(!std::is_assignable_v<decltype(arg5), double>);
+    REQUIRE(!std::is_assignable_v<decltype(arg5), double&>);
+    REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {0}));
+    REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {0.0}));
+    REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {d}));
+    REQUIRE(has_only_cdoubleref_allowed_test(arg5 = std::as_const(d)));
+    REQUIRE(has_only_cdoubleref_allowed_test(arg5 = cd));
 }
