@@ -86,7 +86,7 @@ struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<Explic
     static_assert(::std::is_reference_v<ExplicitType>, "ExplicitType must always be a reference.");
     using value_type = ExplicitType;
 
-    // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type
+    // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type.
     template <typename T, ::std::enable_if_t<::std::is_same_v<T &&, ExplicitType>, int> = 0>
     constexpr auto operator=(T &&x) const
     {
@@ -94,7 +94,7 @@ struct named_argument<Tag, ExplicitType, std::enable_if_t<!std::is_same_v<Explic
     }
 
     // NOTE: enable implicit conversion with curly braces
-    // and copy-list/aggregate initialization with double curly braces
+    // and copy-list/aggregate initialization with double curly braces.
     constexpr auto operator=(detail::tagged_container<Tag, ExplicitType> &&tc) const
     {
         return std::move(tc);
