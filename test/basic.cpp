@@ -33,8 +33,8 @@ using namespace igor;
 IGOR_MAKE_NAMED_ARGUMENT(arg1);
 IGOR_MAKE_NAMED_ARGUMENT(arg2);
 IGOR_MAKE_NAMED_ARGUMENT(arg3);
-inline constexpr auto arg4 = ::igor::named_argument<struct arg4_tag, const char*&&> {};
-inline constexpr auto arg5 = ::igor::named_argument<struct arg5_tag, const double&> {};
+inline constexpr auto arg4 = ::igor::named_argument<struct arg4_tag, const char *&&>{};
+inline constexpr auto arg5 = ::igor::named_argument<struct arg5_tag, const double &>{};
 
 template <typename... Args>
 inline auto f_00(Args &&... args)
@@ -294,12 +294,12 @@ TEST_CASE("test_has_duplicates")
     REQUIRE(has_duplicates_test(arg3 = "Hello", arg1 = 4, arg2 = 56, arg2 = 5, arg1 = 6));
 }
 
-template<typename... Args>
+template <typename... Args>
 inline constexpr auto sum(Args &&... args)
 {
     parser p{args...};
-    
-    if constexpr(!p.has_all(arg1, arg2, arg3))
+
+    if constexpr (!p.has_all(arg1, arg2, arg3))
         return -1;
     else {
         auto [a1, a2, a3] = p(arg1, arg2, arg3);
@@ -315,12 +315,12 @@ TEST_CASE("constexprness")
     REQUIRE(resultOfSum == 56.5);
     REQUIRE(notEnoughArgs == -1);
 }
-  
+
 template <typename... Args>
 inline bool has_only_cstring_allowed_test(Args &&... args)
 {
     parser p{args...};
-    REQUIRE((!p.has(arg4) || std::is_same_v<decltype(p(arg4)), const char*&&>));
+    REQUIRE((!p.has(arg4) || std::is_same_v<decltype(p(arg4)), const char *&&>));
     return p.has(arg4);
 }
 
@@ -328,13 +328,13 @@ template <typename... Args>
 inline bool has_only_cdoubleref_allowed_test(Args &&... args)
 {
     parser p{args...};
-    REQUIRE((!p.has(arg5) || std::is_same_v<decltype(p(arg5)), const double&>));
+    REQUIRE((!p.has(arg5) || std::is_same_v<decltype(p(arg5)), const double &>));
     return p.has(arg5);
 }
 
 TEST_CASE("explicit_typed_arguments")
 {
-    const char* testStr = "hello";
+    const char *testStr = "hello";
     double d = 0.0;
     const double cd = d;
 
