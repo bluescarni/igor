@@ -27,6 +27,23 @@
 #include <type_traits>
 #include <utility>
 
+// NOTE: a possible strategy to improve performance
+// with large number of arguments (i.e., avoiding
+// quadratic complexity):
+// - associate a compile-time unique ID to every named argument
+//   based on its Tag. This can be done, e.g., via taking
+//   the address of an inline variable template (note that this
+//   does not work on GCC due to a bug, can be worked around
+//   by making the unique ID a string_view encoding the type
+//   name, see
+//   https://stackoverflow.com/questions/81870/is-it-possible-to-print-a-variables-type-in-standard-c/56766138#56766138);
+// - build and sort a std::array containing all the IDs
+//   of the named arguments appearing in a variadic pack,
+//   and do binary search in the array for log(n) complexity.
+//
+// Of course, hashing would be even better. E.g., see the frozen library:
+// https://github.com/serge-sans-paille/frozen
+
 namespace igor
 {
 
