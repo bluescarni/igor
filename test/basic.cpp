@@ -342,18 +342,33 @@ TEST_CASE("explicit_typed_arguments")
     REQUIRE(!std::is_assignable_v<decltype(arg4), int>);
     REQUIRE(!std::is_assignable_v<decltype(arg4), decltype("hello")>);
     REQUIRE(!std::is_assignable_v<decltype(arg4), decltype((testStr))>);
-    REQUIRE(has_only_cstring_allowed_test(arg4 = static_cast<const char*>("hello")));
+    REQUIRE(has_only_cstring_allowed_test(arg4 = static_cast<const char *>("hello")));
     REQUIRE(has_only_cstring_allowed_test(arg4 = {"hello"}));
     REQUIRE(has_only_cstring_allowed_test(arg4 = std::move(testStr)));
     REQUIRE(!has_only_cstring_allowed_test());
 
-    REQUIRE(!std::is_assignable_v<decltype(arg5), const char*>);
+    REQUIRE(!std::is_assignable_v<decltype(arg5), const char *>);
     REQUIRE(!std::is_assignable_v<decltype(arg5), int>);
     REQUIRE(!std::is_assignable_v<decltype(arg5), double>);
-    REQUIRE(!std::is_assignable_v<decltype(arg5), double&>);
+    REQUIRE(!std::is_assignable_v<decltype(arg5), double &>);
     REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {0}));
     REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {0.0}));
     REQUIRE(has_only_cdoubleref_allowed_test(arg5 = {d}));
     REQUIRE(has_only_cdoubleref_allowed_test(arg5 = std::as_const(d)));
     REQUIRE(has_only_cdoubleref_allowed_test(arg5 = cd));
+}
+
+template <typename... Args>
+inline auto repeated_args(Args &&... args)
+{
+    parser p{args...};
+
+    return p(arg1);
+}
+
+TEST_CASE("repeated_arguments")
+{
+    REQUIRE(repeated_args(arg1 = 5) == 5);
+    REQUIRE(repeated_args(arg1 = 5, arg1 = 6) == 5);
+    REQUIRE(repeated_args(arg1 = 5, arg1 = 6, arg1 = 7) == 5);
 }
