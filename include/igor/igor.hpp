@@ -309,7 +309,7 @@ private:
     tuple_t m_nargs;
 };
 
-template <typename ExplicitType = void, typename T = decltype([]() {})>
+template <typename ExplicitType = void, typename T = decltype([] {})>
 consteval auto make_named_argument()
 {
     return named_argument<T, ExplicitType>{};
