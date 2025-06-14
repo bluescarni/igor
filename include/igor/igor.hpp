@@ -151,7 +151,7 @@ struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
 template <typename... Args>
 constexpr inline auto build_parser_tuple(const Args &...args)
 {
-    [[maybe_unused]] auto filter_na = []<typename T>(const T &x) {
+    [[maybe_unused]] const auto filter_na = []<typename T>(const T &x) {
         if constexpr (is_tagged_ref_any<T>::value) {
             return std::forward_as_tuple(x);
         } else {
