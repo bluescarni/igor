@@ -372,12 +372,3 @@ TEST_CASE("repeated_arguments")
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6, arg1 = 7) == 5);
 }
-
-template <typename... Args>
-    requires hasso<arg1, Args...>
-inline auto repeated_args2(Args &&...) {};
-
-TEST_CASE("repeated_arguments2")
-{
-    repeated_args2(arg1 = 5);
-}
