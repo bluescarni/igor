@@ -57,6 +57,8 @@ auto as_const_kwarg(const detail::tagged_ref<Tag, T> &tc)
 // Class to represent a named argument.
 template <typename Tag, typename ExplicitType = void>
 struct named_argument {
+    using tag_type = Tag;
+
     template <typename T>
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
         requires(!std::same_as<named_argument, std::remove_cvref_t<T>>)
@@ -91,6 +93,8 @@ struct named_argument {
 template <typename Tag, typename ExplicitType>
     requires(std::is_reference_v<ExplicitType>)
 struct named_argument<Tag, ExplicitType> {
+    using tag_type = Tag;
+
     using value_type = ExplicitType;
 
     // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type.
@@ -144,6 +148,14 @@ template <typename Tag, typename T>
 struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
 };
 
+template <typename>
+struct is_named_argument_any : std::false_type {
+};
+
+template <typename Tag, typename ExplicitType>
+struct is_named_argument_any<named_argument<Tag, ExplicitType>> : std::true_type {
+};
+
 // Implementation of parsers' constructor.
 //
 // This function will take a set of input arguments (as const ref) and will filter out the named arguments (which are
@@ -163,6 +175,14 @@ constexpr inline auto build_parser_tuple(const Args &...args)
 }
 
 } // namespace detail
+
+template <auto narg, typename... Args>
+concept hasso = requires() {
+    requires(detail::is_named_argument_any<std::remove_cv_t<decltype(narg)>>::value);
+    requires(...
+             || detail::is_tagged_ref<typename std::remove_cv_t<decltype(narg)>::tag_type,
+                                      std::remove_cvref_t<Args>>::value);
+};
 
 // NOTE: implement some of the parser functionality as free functions, which will then be wrapped by static constexpr
 // member functions in the parser class. These free functions can be used where a parser object is not available (e.g.,
