@@ -30,11 +30,11 @@
 
 using namespace igor;
 
-IGOR_MAKE_NAMED_ARGUMENT(arg1);
-IGOR_MAKE_NAMED_ARGUMENT(arg2);
-IGOR_MAKE_NAMED_ARGUMENT(arg3);
-inline constexpr auto arg4 = ::igor::named_argument<struct arg4_tag, const char *&&>{};
-inline constexpr auto arg5 = ::igor::named_argument<struct arg5_tag, const double &>{};
+constexpr auto arg1 = igor::make_named_argument();
+constexpr auto arg2 = igor::make_named_argument();
+constexpr auto arg3 = igor::make_named_argument();
+constexpr auto arg4 = igor::make_named_argument<const char *&&>();
+constexpr auto arg5 = igor::make_named_argument<const double &>();
 
 template <typename... Args>
 inline auto f_00(Args &&...args)
