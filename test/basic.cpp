@@ -26,7 +26,7 @@
 
 #include <igor/igor.hpp>
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace igor;
 
@@ -37,7 +37,7 @@ inline constexpr auto arg4 = ::igor::named_argument<struct arg4_tag, const char 
 inline constexpr auto arg5 = ::igor::named_argument<struct arg5_tag, const double &>{};
 
 template <typename... Args>
-inline auto f_00(Args &&... args)
+inline auto f_00(Args &&...args)
 {
     parser p{args...};
     constexpr bool check = p.has_all(arg1, arg2);
@@ -49,7 +49,7 @@ inline auto f_00(Args &&... args)
 }
 
 template <typename... Args>
-inline auto f_01(Args &&... args)
+inline auto f_01(Args &&...args)
 {
     parser p{args...};
     REQUIRE(p.has_all(arg1, arg2));
@@ -64,7 +64,7 @@ inline auto f_01(Args &&... args)
 }
 
 template <typename... Args>
-inline auto f_02(Args &&... args)
+inline auto f_02(Args &&...args)
 {
     parser p{args...};
     REQUIRE(p.has_all(arg1, arg2));
@@ -78,7 +78,7 @@ inline auto f_02(Args &&... args)
 }
 
 template <typename... Args>
-inline auto f_03(Args &&... args)
+inline auto f_03(Args &&...args)
 {
     parser p{args...};
     REQUIRE(p.has_all(arg1, arg5, arg2));
@@ -97,7 +97,7 @@ inline auto f_03(Args &&... args)
 }
 
 template <typename... Args>
-inline auto f_04(Args &&... args)
+inline auto f_04(Args &&...args)
 {
     parser p{args...};
     constexpr auto ha = p.has_any(arg1, arg3, arg5);
@@ -105,7 +105,7 @@ inline auto f_04(Args &&... args)
 }
 
 template <typename... Args>
-inline auto f_05(Args &&... args)
+inline auto f_05(Args &&...args)
 {
     parser p{args...};
     REQUIRE(p.has(arg1));
@@ -144,7 +144,7 @@ TEST_CASE("test_has")
 }
 
 template <typename... Args>
-inline auto unnamed_00(Args &&... args)
+inline auto unnamed_00(Args &&...args)
 {
     parser p{args...};
     constexpr bool hua = p.has_unnamed_arguments();
@@ -166,7 +166,7 @@ TEST_CASE("test_has_unnamed_args")
 }
 
 template <typename... Args>
-inline auto other_than_00(Args &&... args)
+inline auto other_than_00(Args &&...args)
 {
     parser p{args...};
     constexpr bool hot = p.has_other_than(arg1, arg3);
@@ -196,7 +196,7 @@ struct move_only {
 };
 
 template <typename... Args>
-inline void move_argument(Args &&... args)
+inline void move_argument(Args &&...args)
 {
     parser p{args...};
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -211,7 +211,7 @@ TEST_CASE("test_move_only")
 }
 
 template <typename... Args>
-inline auto test_init_list(Args &&... args)
+inline auto test_init_list(Args &&...args)
 {
     parser p{args...};
     return p(arg1);
@@ -233,7 +233,7 @@ inline void inner(T &&, U &&)
 }
 
 template <typename... Args>
-inline void outer(Args &&... args)
+inline void outer(Args &&...args)
 {
     parser p{args...};
     auto [a, b] = p(arg1, arg2);
@@ -248,7 +248,7 @@ TEST_CASE("test_perfect_forward")
 }
 
 template <typename... Args>
-inline bool not_provided_test(Args &&... args)
+inline bool not_provided_test(Args &&...args)
 {
     parser p{args...};
     auto [a, b] = p(arg1, arg2);
@@ -269,7 +269,7 @@ TEST_CASE("test_not_provided")
 }
 
 template <typename... Args>
-inline bool has_duplicates_test(Args &&... args)
+inline bool has_duplicates_test(Args &&...args)
 {
     parser p{args...};
     if constexpr (p.has_duplicates()) {
@@ -295,7 +295,7 @@ TEST_CASE("test_has_duplicates")
 }
 
 template <typename... Args>
-inline constexpr auto sum(Args &&... args)
+inline constexpr auto sum(Args &&...args)
 {
     parser p{args...};
 
@@ -317,7 +317,7 @@ TEST_CASE("constexprness")
 }
 
 template <typename... Args>
-inline bool has_only_cstring_allowed_test(Args &&... args)
+inline bool has_only_cstring_allowed_test(Args &&...args)
 {
     parser p{args...};
     REQUIRE((!p.has(arg4) || std::is_same_v<decltype(p(arg4)), const char *&&>));
@@ -325,7 +325,7 @@ inline bool has_only_cstring_allowed_test(Args &&... args)
 }
 
 template <typename... Args>
-inline bool has_only_cdoubleref_allowed_test(Args &&... args)
+inline bool has_only_cdoubleref_allowed_test(Args &&...args)
 {
     parser p{args...};
     REQUIRE((!p.has(arg5) || std::is_same_v<decltype(p(arg5)), const double &>));
@@ -359,7 +359,7 @@ TEST_CASE("explicit_typed_arguments")
 }
 
 template <typename... Args>
-inline auto repeated_args(Args &&... args)
+inline auto repeated_args(Args &&...args)
 {
     parser p{args...};
 

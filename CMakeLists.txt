@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.8.0)
+# NOTE: C++20 supported since version 3.12.
+cmake_minimum_required(VERSION 3.12.0)
 
 # Set default build type to "Release".
 if(NOT CMAKE_BUILD_TYPE)
