@@ -372,3 +372,15 @@ TEST_CASE("repeated_arguments")
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6, arg1 = 7) == 5);
 }
+
+template <typename... KwArgs>
+    requires(validate<KwArgs...>(vconfig<descr<arg1, []<typename> { return true; }>{}>{}))
+// requires(validate2<KwArgs...>(descr<arg1, std::is_integral>{}, descr<arg1, std::is_integral>{}))
+void foo(const KwArgs &...)
+{
+}
+
+TEST_CASE("validation")
+{
+    foo(1, 23);
+}

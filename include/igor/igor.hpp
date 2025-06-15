@@ -144,6 +144,14 @@ template <typename Tag, typename T>
 struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
 };
 
+template <typename>
+struct is_any_named_argument : std::false_type {
+};
+
+template <typename Tag, typename ExplicitType>
+struct is_any_named_argument<named_argument<Tag, ExplicitType>> : std::true_type {
+};
+
 // Implementation of parsers' constructor.
 //
 // This function will take a set of input arguments (as const ref) and will filter out the named arguments (which are
@@ -163,6 +171,66 @@ constexpr inline auto build_parser_tuple(const Args &...args)
 }
 
 } // namespace detail
+
+template <auto NA>
+concept any_named_argument_cv = detail::is_any_named_argument<std::remove_cv_t<decltype(NA)>>::value;
+
+template <typename NA, typename Validator>
+struct na_descriptor {
+    const NA m_na;
+    const Validator m_validator;
+
+    consteval explicit na_descriptor(NA na, Validator validator) : m_na(na), m_validator(validator) {}
+};
+
+template <typename... NA, typename... Validator>
+auto foffo(std::tuple<na_descriptor<NA, Validator>...>)
+{
+}
+
+template <auto NA, auto Validator = []<typename> { return true; }>
+    requires any_named_argument_cv<NA>
+struct descr {
+    bool required = false;
+
+    template <typename T>
+        requires requires {
+            { Validator.template operator()<T>() } -> std::same_as<bool>;
+        }
+    static consteval bool validate()
+    {
+        return Validator.template operator()<T>();
+    }
+};
+
+namespace detail
+{
+
+template <typename>
+struct is_any_descr : std::false_type {
+};
+
+template <auto NA, auto Validator>
+struct is_any_descr<descr<NA, Validator>> : std::true_type {
+};
+
+} // namespace detail
+
+template <auto Desc>
+concept any_descr_cv = detail::is_any_descr<std::remove_cv_t<decltype(Desc)>>::value;
+
+template <auto... NaValidators>
+    requires((... && any_descr_cv<NaValidators>))
+struct vconfig {
+};
+
+template <typename... Args, auto... NaValidators>
+consteval bool validate(vconfig<NaValidators...>)
+{
+    (..., NaValidators.template validate<int>());
+
+    return true;
+}
 
 // NOTE: implement some of the parser functionality as free functions, which will then be wrapped by static constexpr
 // member functions in the parser class. These free functions can be used where a parser object is not available (e.g.,
