@@ -1,0 +1,35 @@
+name: GitHub CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  # clang_14:
+  #   runs-on: macos-14
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Build
+  #       run: bash tools/gha_osx_arm64_static.sh
+  msvc:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.10"
+          channels: conda-forge
+          channel-priority: strict
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build
+        shell: pwsh
+        run: |
+          conda install -y cmake
+          mkdir build
+          cd build
+          cmake ../ -G "Visual Studio 17 2022" -A x64 -DIGOR_BUILD_TESTS=yes
+          cmake --build . --config Debug -j2
+          ctest -j4 -V -C Debug
