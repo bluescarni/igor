@@ -36,11 +36,16 @@ namespace detail
 
 // This is the class used to store a reference to a function argument. An object of this type is returned by
 // named_argument's assignment operator.
+//
+// NOTE: the Tag type is is used to establish a correspondence between the tagged reference and the named argument that
+// created it.
 template <typename Tag, typename T>
     requires(std::is_reference_v<T>)
 struct tagged_ref {
-    using tag_type = Tag;
     T value;
+
+    using tag_type = Tag;
+    using value_type = T;
 };
 
 } // namespace detail
@@ -57,8 +62,10 @@ auto as_const_kwarg(const detail::tagged_ref<Tag, T> &tc)
 // Class to represent a named argument.
 template <typename Tag, typename ExplicitType = void>
 struct named_argument {
-    template <typename T>
+    using tag_type = Tag;
+
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
+    template <typename T>
         requires(!std::same_as<named_argument, std::remove_cvref_t<T>>)
     constexpr auto operator=(T &&x) const
     {
@@ -91,6 +98,7 @@ struct named_argument {
 template <typename Tag, typename ExplicitType>
     requires(std::is_reference_v<ExplicitType>)
 struct named_argument<Tag, ExplicitType> {
+    using tag_type = Tag;
     using value_type = ExplicitType;
 
     // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type.
@@ -112,6 +120,13 @@ struct named_argument<Tag, ExplicitType> {
         requires(!std::same_as<T &&, ExplicitType>)
     auto operator=(T &&) const = delete; // please use {...} to typed argument implicit conversion
 };
+
+// Equality comparison: return true when comparing named arguments with identical tags, false otherwise.
+template <typename Tag1, typename ExplicitType1, typename Tag2, typename ExplicitType2>
+consteval bool operator==(named_argument<Tag1, ExplicitType1>, named_argument<Tag2, ExplicitType2>)
+{
+    return std::same_as<Tag1, Tag2>;
+}
 
 // Type representing a named argument which
 // was not provided in a function call.
@@ -144,6 +159,7 @@ template <typename Tag, typename T>
 struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
 };
 
+// Type trait to detect named arguments.
 template <typename>
 struct is_any_named_argument : std::false_type {
 };
@@ -172,31 +188,32 @@ constexpr inline auto build_parser_tuple(const Args &...args)
 
 } // namespace detail
 
+// Concept to detect cv-qualified named arguments.
 template <auto NA>
 concept any_named_argument_cv = detail::is_any_named_argument<std::remove_cv_t<decltype(NA)>>::value;
 
-template <typename NA, typename Validator>
-struct na_descriptor {
-    const NA m_na;
-    const Validator m_validator;
+namespace detail
+{
 
-    consteval explicit na_descriptor(NA na, Validator validator) : m_na(na), m_validator(validator) {}
+// Concept to check if V is usable as a descr validator for the type T.
+template <auto V, typename T>
+concept valid_descr_validator = requires {
+    { V.template operator()<T>() } -> std::same_as<bool>;
 };
 
-template <typename... NA, typename... Validator>
-auto foffo(std::tuple<na_descriptor<NA, Validator>...>)
-{
-}
+} // namespace detail
 
 template <auto NA, auto Validator = []<typename> { return true; }>
     requires any_named_argument_cv<NA>
 struct descr {
+    // Configuration options.
     bool required = false;
 
+    // Store a copy of the named argument for later use.
+    static constexpr auto na = NA;
+
     template <typename T>
-        requires requires {
-            { Validator.template operator()<T>() } -> std::same_as<bool>;
-        }
+        requires detail::valid_descr_validator<Validator, T>
     static consteval bool validate()
     {
         return Validator.template operator()<T>();
@@ -206,6 +223,7 @@ struct descr {
 namespace detail
 {
 
+// Type trait to detect descriptors.
 template <typename>
 struct is_any_descr : std::false_type {
 };
@@ -216,18 +234,127 @@ struct is_any_descr<descr<NA, Validator>> : std::true_type {
 
 } // namespace detail
 
+// Concept to detect cv-qualified descriptors.
 template <auto Desc>
 concept any_descr_cv = detail::is_any_descr<std::remove_cv_t<decltype(Desc)>>::value;
 
-template <auto... NaValidators>
-    requires((... && any_descr_cv<NaValidators>))
-struct vconfig {
+namespace detail
+{
+
+// Function to check that are no duplicates in the pack of descriptors Descrs.
+//
+// NOTE: descriptors are compared via their named arguments.
+consteval bool no_duplicate_descrs(auto... Descrs)
+{
+    // Helper to compare one descriptor to all Descrs.
+    constexpr auto check_one = [](auto a, auto... b) {
+        return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(a.na == b.na)) == 1u;
+    };
+
+    return (... && check_one(Descrs, Descrs...));
+}
+
+} // namespace detail
+
+// Validation config.
+template <auto... Descrs>
+    requires(sizeof...(Descrs) > 0u) && (... && any_descr_cv<Descrs>) && (detail::no_duplicate_descrs(Descrs...))
+struct config {
+    // Config options.
+    bool allow_unnamed = false;
+    bool allow_extra = false;
 };
 
-template <typename... Args, auto... NaValidators>
-consteval bool validate(vconfig<NaValidators...>)
+template <typename... Args, auto... Descrs>
+consteval bool validate(config<Descrs...> cfg)
 {
-    (..., NaValidators.template validate<int>());
+    // Step 1: if allow_unnamed is not activated, check that we have only have named arguments.
+    if (!cfg.allow_unnamed) {
+        if (!(... && detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value)) {
+            return false;
+        }
+    }
+
+    // Step 2: check that there are no duplicate named arguments in Args.
+    constexpr auto check_one_unique_na = []<typename T>() {
+        using Tu = std::remove_cvref_t<T>;
+
+        if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+            return (static_cast<std::size_t>(0) + ...
+                    + static_cast<std::size_t>(std::same_as<Tu, std::remove_cvref_t<Args>>))
+                   == 1u;
+        } else {
+            return true;
+        }
+    };
+    if (!(... && check_one_unique_na.template operator()<Args>())) {
+        return false;
+    }
+
+    // Step 3: if allow_extra is not activated, check that every named argument has a descriptor.
+    if (!cfg.allow_extra) {
+        constexpr auto has_descr = []<typename T>(auto... descrs) {
+            using Tu = std::remove_cvref_t<T>;
+
+            if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+                return (static_cast<std::size_t>(0) + ...
+                        + static_cast<std::size_t>(
+                            std::same_as<typename Tu::tag_type, typename decltype(descrs.na)::tag_type>))
+                       == 1u;
+            } else {
+                return true;
+            }
+        };
+        if (!(... && has_descr.template operator()<Args>(Descrs...))) {
+            return false;
+        }
+    }
+
+    // Step 4: check that all required named arguments are present.
+    constexpr auto check_one_descr_present = []<auto descr>() {
+        if constexpr (descr.required) {
+            using tag_type = typename decltype(descr.na)::tag_type;
+
+            constexpr auto faffo = []<typename T>() {
+                using Tu = std::remove_cvref_t<T>;
+
+                if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+                    return std::same_as<typename Tu::tag_type, tag_type>;
+                } else {
+                    return false;
+                }
+            };
+
+            return (... || faffo.template operator()<Args>());
+        } else {
+            return true;
+        }
+    };
+    if (!(... && check_one_descr_present.template operator()<Descrs>())) {
+        return false;
+    }
+
+    // Step 5: run the validators.
+    constexpr auto validate_one_na = []<typename T>(auto... descrs) {
+        using Tu = std::remove_cvref_t<T>;
+
+        if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+            constexpr auto validate = [](auto d) {
+                if constexpr (std::same_as<typename Tu::tag_type, typename decltype(d.na)::tag_type>) {
+                    return d.template validate<typename Tu::value_type>();
+                } else {
+                    return true;
+                }
+            };
+
+            return (... && validate(descrs));
+        } else {
+            return true;
+        }
+    };
+    if (!(... && validate_one_na.template operator()<Args>(Descrs...))) {
+        return false;
+    }
 
     return true;
 }
@@ -277,10 +404,10 @@ namespace detail
 template <typename T, typename... Args>
 consteval bool is_repeated_named_argument()
 {
-    if constexpr (is_tagged_ref_any<std::remove_cvref_t<T>>::value) {
-        return (std::size_t(0) + ...
-                + static_cast<std::size_t>(std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<Args>>))
-               > 1u;
+    using Tu = std::remove_cvref_t<T>;
+
+    if constexpr (is_tagged_ref_any<Tu>::value) {
+        return (std::size_t(0) + ... + static_cast<std::size_t>(std::is_same_v<Tu, std::remove_cvref_t<Args>>)) > 1u;
     } else {
         return false;
     }
