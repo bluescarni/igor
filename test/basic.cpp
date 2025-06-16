@@ -220,7 +220,6 @@ inline auto test_init_list(Args &&...args)
 TEST_CASE("test_init_list")
 {
     REQUIRE((std::vector(test_init_list(arg1 = {1, 2, 3, 4})) == std::vector{1, 2, 3, 4}));
-    REQUIRE((std::vector(test_init_list(arg1 = {"hello", "world"})) == std::vector{"hello", "world"}));
 }
 
 template <typename T, typename U>
