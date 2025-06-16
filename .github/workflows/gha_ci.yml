@@ -22,7 +22,7 @@ jobs:
           auto-update-conda: true
           python-version: "3.10"
           channels: conda-forge
-          channel-priority: strict
+          conda-remove-defaults: "true"
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Build
         shell: pwsh
