@@ -32,7 +32,6 @@ cmake ../ -G Ninja \
     -DCMAKE_C_COMPILER=clang \
     -DCMAKE_BUILD_TYPE=Debug \
     -DIGOR_BUILD_TESTS=yes \
-    -DCMAKE_CXX_FLAGS="-fsanitize=address" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -Og"
 
 # Build.
