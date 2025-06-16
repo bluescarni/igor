@@ -14,7 +14,7 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 bash miniconda.sh -b -p $HOME/miniconda
-conda create -y -p $deps_dir cmake ninja 'clang=14.*' 'clangxx=14.*'
+conda create -y -p $deps_dir cmake ninja 'clang=14.*' 'clangxx=14.*' 'libcxx=14.*'
 source activate $deps_dir
 
 # Create the build dir and cd into it.
@@ -32,6 +32,7 @@ cmake ../ -G Ninja \
     -DCMAKE_C_COMPILER=clang \
     -DCMAKE_BUILD_TYPE=Debug \
     -DIGOR_BUILD_TESTS=yes \
+    -DCMAKE_CXX_FLAGS="-stdlib=libc++" \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -Og"
 
 # Build.
