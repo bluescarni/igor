@@ -198,7 +198,7 @@ concept valid_descr_validator = requires {
     { V.template operator()<T>() } -> std::same_as<bool>;
 };
 
-template <auto NA, auto Validator = []<typename> { return true; }>
+template <auto NA, auto Validator = []<typename>() { return true; }>
     requires any_named_argument_cv<NA>
 struct descr {
     // Configuration options.

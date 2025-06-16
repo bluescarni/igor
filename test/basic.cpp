@@ -373,8 +373,8 @@ TEST_CASE("repeated_arguments")
 }
 
 template <typename... KwArgs>
-    requires(
-        validate<KwArgs...>(config<descr<arg1, []<typename T> { return std::integral<std::remove_cvref_t<T>>; }>{}>{}))
+    requires(validate<KwArgs...>(
+        config<descr<arg1, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{}))
 void foo(const KwArgs &...)
 {
 }
