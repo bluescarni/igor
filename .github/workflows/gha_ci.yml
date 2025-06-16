@@ -7,12 +7,12 @@ on:
     branches:
       - master
 jobs:
-  # clang_14:
-  #   runs-on: macos-14
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Build
-  #       run: bash tools/gha_osx_arm64_static.sh
+  clang_14:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash tools/gha_clang.sh
   msvc_2022:
     runs-on: windows-2022
     steps:
