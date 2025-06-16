@@ -192,16 +192,11 @@ constexpr inline auto build_parser_tuple(const Args &...args)
 template <auto NA>
 concept any_named_argument_cv = detail::is_any_named_argument<std::remove_cv_t<decltype(NA)>>::value;
 
-namespace detail
-{
-
-// Concept to check if V is usable as a descr validator for the type T.
+// Concept to check if V is usable as a validator for the type T.
 template <auto V, typename T>
 concept valid_descr_validator = requires {
     { V.template operator()<T>() } -> std::same_as<bool>;
 };
-
-} // namespace detail
 
 template <auto NA, auto Validator = []<typename> { return true; }>
     requires any_named_argument_cv<NA>
@@ -213,7 +208,7 @@ struct descr {
     static constexpr auto na = NA;
 
     template <typename T>
-        requires detail::valid_descr_validator<Validator, T>
+        requires valid_descr_validator<Validator, T>
     static consteval bool validate()
     {
         return Validator.template operator()<T>();
@@ -235,8 +230,8 @@ struct is_any_descr<descr<NA, Validator>> : std::true_type {
 } // namespace detail
 
 // Concept to detect cv-qualified descriptors.
-template <auto Desc>
-concept any_descr_cv = detail::is_any_descr<std::remove_cv_t<decltype(Desc)>>::value;
+template <auto Descr>
+concept any_descr_cv = detail::is_any_descr<std::remove_cv_t<decltype(Descr)>>::value;
 
 namespace detail
 {
@@ -244,11 +239,11 @@ namespace detail
 // Function to check that are no duplicates in the pack of descriptors Descrs.
 //
 // NOTE: descriptors are compared via their named arguments.
-consteval bool no_duplicate_descrs(auto... Descrs)
+consteval bool no_duplicate_descrs_impl(auto... Descrs)
 {
     // Helper to compare one descriptor to all Descrs.
-    constexpr auto check_one = [](auto a, auto... b) {
-        return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(a.na == b.na)) == 1u;
+    constexpr auto check_one = [](auto cur_descr, auto... all_descrs) {
+        return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(cur_descr.na == all_descrs.na)) == 1u;
     };
 
     return (... && check_one(Descrs, Descrs...));
@@ -256,9 +251,12 @@ consteval bool no_duplicate_descrs(auto... Descrs)
 
 } // namespace detail
 
+template <auto... Descrs>
+concept no_duplicate_descrs = detail::no_duplicate_descrs_impl(Descrs...);
+
 // Validation config.
 template <auto... Descrs>
-    requires(sizeof...(Descrs) > 0u) && (... && any_descr_cv<Descrs>) && (detail::no_duplicate_descrs(Descrs...))
+    requires(sizeof...(Descrs) > 0u) && (... && any_descr_cv<Descrs>) && no_duplicate_descrs<Descrs...>
 struct config {
     // Config options.
     bool allow_unnamed = false;
@@ -276,12 +274,12 @@ consteval bool validate(config<Descrs...> cfg)
     }
 
     // Step 2: check that there are no duplicate named arguments in Args.
-    constexpr auto check_one_unique_na = []<typename T>() {
-        using Tu = std::remove_cvref_t<T>;
+    constexpr auto check_one_unique_na = []<typename Arg>() {
+        using arg_u = std::remove_cvref_t<Arg>;
 
-        if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+        if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
             return (static_cast<std::size_t>(0) + ...
-                    + static_cast<std::size_t>(std::same_as<Tu, std::remove_cvref_t<Args>>))
+                    + static_cast<std::size_t>(std::same_as<arg_u, std::remove_cvref_t<Args>>))
                    == 1u;
         } else {
             return true;
@@ -293,14 +291,11 @@ consteval bool validate(config<Descrs...> cfg)
 
     // Step 3: if allow_extra is not activated, check that every named argument has a descriptor.
     if (!cfg.allow_extra) {
-        constexpr auto has_descr = []<typename T>(auto... descrs) {
-            using Tu = std::remove_cvref_t<T>;
+        constexpr auto has_descr = []<typename Arg>(auto... descrs) {
+            using arg_u = std::remove_cvref_t<Arg>;
 
-            if constexpr (detail::is_tagged_ref_any<Tu>::value) {
-                return (static_cast<std::size_t>(0) + ...
-                        + static_cast<std::size_t>(
-                            std::same_as<typename Tu::tag_type, typename decltype(descrs.na)::tag_type>))
-                       == 1u;
+            if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
+                return (... || std::same_as<typename arg_u::tag_type, typename decltype(descrs.na)::tag_type>);
             } else {
                 return true;
             }
@@ -315,17 +310,17 @@ consteval bool validate(config<Descrs...> cfg)
         if constexpr (descr.required) {
             using tag_type = typename decltype(descr.na)::tag_type;
 
-            constexpr auto faffo = []<typename T>() {
-                using Tu = std::remove_cvref_t<T>;
+            constexpr auto tags_match = []<typename Arg>() {
+                using arg_u = std::remove_cvref_t<Arg>;
 
-                if constexpr (detail::is_tagged_ref_any<Tu>::value) {
-                    return std::same_as<typename Tu::tag_type, tag_type>;
+                if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
+                    return std::same_as<typename arg_u::tag_type, tag_type>;
                 } else {
                     return false;
                 }
             };
 
-            return (... || faffo.template operator()<Args>());
+            return (... || tags_match.template operator()<Args>());
         } else {
             return true;
         }
@@ -335,13 +330,13 @@ consteval bool validate(config<Descrs...> cfg)
     }
 
     // Step 5: run the validators.
-    constexpr auto validate_one_na = []<typename T>(auto... descrs) {
-        using Tu = std::remove_cvref_t<T>;
+    constexpr auto validate_one_na = []<typename Arg>(auto... descrs) {
+        using arg_u = std::remove_cvref_t<Arg>;
 
-        if constexpr (detail::is_tagged_ref_any<Tu>::value) {
+        if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
             constexpr auto validate = [](auto d) {
-                if constexpr (std::same_as<typename Tu::tag_type, typename decltype(d.na)::tag_type>) {
-                    return d.template validate<typename Tu::value_type>();
+                if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
+                    return d.template validate<typename arg_u::value_type>();
                 } else {
                     return true;
                 }
