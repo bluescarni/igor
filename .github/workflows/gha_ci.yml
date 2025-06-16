@@ -7,6 +7,12 @@ on:
     branches:
       - master
 jobs:
+  gcc_10:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash tools/gha_gcc.sh
   clang_14:
     runs-on: macos-14
     steps:
