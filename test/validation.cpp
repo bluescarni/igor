@@ -60,7 +60,7 @@ TEST_CASE("valid descr validator concept")
 
 constexpr auto cfg_simple_validation
     = config<descr<arg1>{.required = true}, descr<arg2>{},
-             descr<arg3, []<typename T> { return std::integral<std::remove_cvref_t<T>>; }>{}>{};
+             descr<arg3, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{};
 
 template <typename... KwArgs>
 bool simple_validation(const KwArgs &...)
