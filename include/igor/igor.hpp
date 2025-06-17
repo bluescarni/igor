@@ -280,7 +280,7 @@ consteval bool validate(config<Descrs...> cfg)
 {
     // Step 1: if allow_unnamed is not activated, check that we have only have named arguments.
     if (!cfg.allow_unnamed) {
-        if (!(... && detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value)) {
+        if constexpr (!(... && detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value)) {
             return false;
         }
     }
@@ -297,7 +297,7 @@ consteval bool validate(config<Descrs...> cfg)
             return true;
         }
     };
-    if (!(... && check_one_unique_na.template operator()<Args>())) {
+    if constexpr (!(... && check_one_unique_na.template operator()<Args>())) {
         return false;
     }
 
@@ -312,7 +312,7 @@ consteval bool validate(config<Descrs...> cfg)
                 return true;
             }
         };
-        if (!(... && has_descr.template operator()<Args>(Descrs...))) {
+        if constexpr (!(... && has_descr.template operator()<Args>(Descrs...))) {
             return false;
         }
     }
@@ -337,7 +337,7 @@ consteval bool validate(config<Descrs...> cfg)
             return true;
         }
     };
-    if (!(... && check_one_descr_present.template operator()<Descrs>())) {
+    if constexpr (!(... && check_one_descr_present.template operator()<Descrs>())) {
         return false;
     }
 
@@ -359,7 +359,7 @@ consteval bool validate(config<Descrs...> cfg)
             return true;
         }
     };
-    if (!(... && validate_one_na.template operator()<Args>(Descrs...))) {
+    if constexpr (!(... && validate_one_na.template operator()<Args>(Descrs...))) {
         return false;
     }
 
