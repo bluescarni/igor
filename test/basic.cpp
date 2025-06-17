@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Francesco Biscani
+// Copyright 2018-2025 Francesco Biscani
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,11 +30,11 @@
 
 using namespace igor;
 
-constexpr auto arg1 = igor::make_named_argument();
-constexpr auto arg2 = igor::make_named_argument();
-constexpr auto arg3 = igor::make_named_argument();
-constexpr auto arg4 = igor::make_named_argument<const char *&&>();
-constexpr auto arg5 = igor::make_named_argument<const double &>();
+constexpr auto arg1 = make_named_argument();
+constexpr auto arg2 = make_named_argument();
+constexpr auto arg3 = make_named_argument();
+constexpr auto arg4 = make_named_argument<const char *&&>();
+constexpr auto arg5 = make_named_argument<const double &>();
 
 template <typename... Args>
 inline auto f_00(Args &&...args)
@@ -370,16 +370,4 @@ TEST_CASE("repeated_arguments")
     REQUIRE(repeated_args(arg1 = 5) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6, arg1 = 7) == 5);
-}
-
-template <typename... KwArgs>
-    requires(validate<KwArgs...>(
-        config<descr<arg1, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{}))
-void foo(const KwArgs &...)
-{
-}
-
-TEST_CASE("validation")
-{
-    foo(arg1 = 1);
 }

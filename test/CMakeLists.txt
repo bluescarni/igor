@@ -16,3 +16,4 @@ function(ADD_IGOR_TESTCASE arg1)
 endfunction()
 
 ADD_IGOR_TESTCASE(basic)
+ADD_IGOR_TESTCASE(validation)

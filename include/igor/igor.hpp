@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Francesco Biscani
+// Copyright 2018-2025 Francesco Biscani
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -192,10 +192,21 @@ constexpr inline auto build_parser_tuple(const Args &...args)
 template <auto NA>
 concept any_named_argument_cv = detail::is_any_named_argument<std::remove_cv_t<decltype(NA)>>::value;
 
+namespace detail
+{
+
+// An always-true concept for use below.
+template <auto>
+concept always_true_nttp = true;
+
+} // namespace detail
+
 // Concept to check if V is usable as a validator for the type T.
 template <auto V, typename T>
 concept valid_descr_validator = requires {
     { V.template operator()<T>() } -> std::same_as<bool>;
+    // NOTE: this part checks that the call operator of V is usable at compile-time.
+    requires detail::always_true_nttp<V.template operator()<T>()>;
 };
 
 template <auto NA, auto Validator = []<typename>() { return true; }>
@@ -236,7 +247,7 @@ concept any_descr_cv = detail::is_any_descr<std::remove_cv_t<decltype(Descr)>>::
 namespace detail
 {
 
-// Function to check that are no duplicates in the pack of descriptors Descrs.
+// Function to check that there are no duplicates in the pack of descriptors Descrs.
 //
 // NOTE: descriptors are compared via their named arguments.
 consteval bool no_duplicate_descrs_impl(auto... Descrs)
@@ -251,10 +262,11 @@ consteval bool no_duplicate_descrs_impl(auto... Descrs)
 
 } // namespace detail
 
+// Concept to check that there are no duplicates in the pack of descriptors Descrs.
 template <auto... Descrs>
 concept no_duplicate_descrs = detail::no_duplicate_descrs_impl(Descrs...);
 
-// Validation config.
+// Configuration structure for named arguments validation.
 template <auto... Descrs>
     requires(sizeof...(Descrs) > 0u) && (... && any_descr_cv<Descrs>) && no_duplicate_descrs<Descrs...>
 struct config {
