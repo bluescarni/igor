@@ -149,11 +149,14 @@ template <typename Tag, typename T>
 struct is_tagged_ref<Tag, tagged_ref<Tag, T>> : std::true_type {
 };
 
-// Type trait to detect if T is a tagged reference (regardless of the tag type or the type
-// of the second parameter).
+// Type trait/concept to detect if T is a tagged reference (regardless of the tag type or the type of the second
+// parameter).
 template <typename T>
 struct is_tagged_ref_any : std::false_type {
 };
+
+template <typename T>
+concept any_tagged_ref = is_tagged_ref_any<T>::value;
 
 template <typename Tag, typename T>
 struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
@@ -275,96 +278,176 @@ struct config {
     bool allow_extra = false;
 };
 
-template <typename... Args, auto... Descrs>
-consteval bool validate(config<Descrs...> cfg)
+namespace detail
 {
-    // Step 1: if allow_unnamed is not activated, check that we have only have named arguments.
-    if (!cfg.allow_unnamed) {
-        if constexpr (!(... && detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value)) {
-            return false;
-        }
-    }
 
-    // Step 2: check that there are no duplicate named arguments in Args.
-    [[maybe_unused]] constexpr auto check_one_unique_na = []<typename Arg>() {
+// Type trait to detect an instance of the config class.
+template <typename>
+struct is_any_config : std::false_type {
+};
+
+template <auto... Descrs>
+struct is_any_config<config<Descrs...>> : std::true_type {
+};
+
+// Concept to detect a cv qualified instance of the config class.
+template <auto Cfg>
+concept any_config_cv = is_any_config<std::remove_cv_t<decltype(Cfg)>>::value;
+
+template <auto Cfg, typename... Args>
+concept validate_unnamed_arguments = (Cfg.allow_unnamed) || (any_tagged_ref<std::remove_cvref_t<Args>> && ...);
+
+template <typename Arg, typename... Args>
+consteval bool check_one_unique_named_argument()
+{
+    using arg_u = std::remove_cvref_t<Arg>;
+
+    if constexpr (any_tagged_ref<arg_u>) {
+        return (static_cast<std::size_t>(0) + ...
+                + static_cast<std::size_t>(std::same_as<arg_u, std::remove_cvref_t<Args>>))
+               == 1u;
+    } else {
+        return true;
+    }
+}
+
+template <typename Arg, typename... Args>
+concept unique_named_argument = check_one_unique_named_argument<Arg, Args...>();
+
+template <typename... Args>
+concept validate_no_repeated_named_arguments = (unique_named_argument<Args, Args...> && ...);
+
+template <typename Arg>
+consteval bool arg_has_descriptor(auto... descrs)
+{
+    using arg_u = std::remove_cvref_t<Arg>;
+
+    if constexpr (any_tagged_ref<arg_u>) {
+        return (... || std::same_as<typename arg_u::tag_type, typename decltype(descrs.na)::tag_type>);
+    } else {
+        return true;
+    }
+}
+
+template <typename>
+struct all_args_have_descriptors;
+
+template <auto... Descrs>
+struct all_args_have_descriptors<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr bool value = (... && arg_has_descriptor<Args>(Descrs...));
+};
+
+template <typename... Args>
+consteval bool check_one_descr_present(auto descr)
+{
+    if (descr.required) {
+        using tag_type = typename decltype(descr.na)::tag_type;
+
+        [[maybe_unused]] constexpr auto tags_match = []<typename Arg>() {
+            using arg_u = std::remove_cvref_t<Arg>;
+
+            if constexpr (any_tagged_ref<arg_u>) {
+                return std::same_as<typename arg_u::tag_type, tag_type>;
+            } else {
+                return false;
+            }
+        };
+
+        return (... || tags_match.template operator()<Args>());
+    } else {
+        return true;
+    }
+}
+
+template <typename>
+struct all_required_arguments_are_present;
+
+template <auto... Descrs>
+struct all_required_arguments_are_present<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr bool value = (... && check_one_descr_present<Args...>(Descrs));
+};
+
+template <typename... Args>
+consteval bool validate_one_validator(auto descr)
+{
+    constexpr auto check_single_arg = []<typename Arg>(auto d) {
         using arg_u = std::remove_cvref_t<Arg>;
 
         if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
-            return (static_cast<std::size_t>(0) + ...
-                    + static_cast<std::size_t>(std::same_as<arg_u, std::remove_cvref_t<Args>>))
-                   == 1u;
+            if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
+                // NOTE: here we are checking if the validator is properly implemented.
+                return requires { d.template validate<typename arg_u::value_type>(); };
+            } else {
+                return true;
+            }
         } else {
             return true;
         }
     };
-    if constexpr (!(... && check_one_unique_na.template operator()<Args>())) {
-        return false;
-    }
 
-    // Step 3: if allow_extra is not activated, check that every named argument has a descriptor.
-    if (!cfg.allow_extra) {
-        [[maybe_unused]] constexpr auto has_descr = []<typename Arg>(auto... descrs) {
-            using arg_u = std::remove_cvref_t<Arg>;
+    return (... && check_single_arg.template operator()<Args>(descr));
+}
 
-            if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
-                return (... || std::same_as<typename arg_u::tag_type, typename decltype(descrs.na)::tag_type>);
+template <typename>
+struct validate_validators;
+
+template <auto... Descrs>
+struct validate_validators<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr bool value = (... && validate_one_validator<Args...>(Descrs));
+};
+
+template <typename Arg>
+consteval bool validate_one_named_argument(auto... descrs)
+{
+    using arg_u = std::remove_cvref_t<Arg>;
+
+    if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
+        constexpr auto check_single_descr = [](auto d) {
+            if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
+                return d.template validate<typename arg_u::value_type>();
             } else {
                 return true;
             }
         };
-        if constexpr (!(... && has_descr.template operator()<Args>(Descrs...))) {
-            return false;
-        }
+
+        return (... && check_single_descr(descrs));
+    } else {
+        return true;
     }
-
-    // Step 4: check that all required named arguments are present.
-    constexpr auto check_one_descr_present = []<auto descr>() {
-        if constexpr (descr.required) {
-            using tag_type = typename decltype(descr.na)::tag_type;
-
-            constexpr auto tags_match = []<typename Arg>() {
-                using arg_u = std::remove_cvref_t<Arg>;
-
-                if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
-                    return std::same_as<typename arg_u::tag_type, tag_type>;
-                } else {
-                    return false;
-                }
-            };
-
-            return (... || tags_match.template operator()<Args>());
-        } else {
-            return true;
-        }
-    };
-    if constexpr (!(... && check_one_descr_present.template operator()<Descrs>())) {
-        return false;
-    }
-
-    // Step 5: run the validators.
-    [[maybe_unused]] constexpr auto validate_one_na = []<typename Arg>(auto... descrs) {
-        using arg_u = std::remove_cvref_t<Arg>;
-
-        if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
-            constexpr auto validate = [](auto d) {
-                if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
-                    return d.template validate<typename arg_u::value_type>();
-                } else {
-                    return true;
-                }
-            };
-
-            return (... && validate(descrs));
-        } else {
-            return true;
-        }
-    };
-    if constexpr (!(... && validate_one_na.template operator()<Args>(Descrs...))) {
-        return false;
-    }
-
-    return true;
 }
+
+template <typename>
+struct validate_named_arguments;
+
+template <auto... Descrs>
+struct validate_named_arguments<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr bool value = (... && validate_one_named_argument<Args>(Descrs...));
+};
+
+} // namespace detail
+
+template <auto Cfg, typename... Args>
+concept validate = requires {
+    // Step 0: check that Cfg is a config instance.
+    requires detail::any_config_cv<Cfg>;
+    // Step 1: validate the unnamed arguments.
+    requires detail::validate_unnamed_arguments<Cfg, Args...>;
+    // Step 2: check that there are no duplicate named arguments in Args.
+    requires detail::validate_no_repeated_named_arguments<Args...>;
+    // Step 3: validate extra named arguments (i.e., those not present in Cfg).
+    requires(Cfg.allow_extra)
+                || (detail::all_args_have_descriptors<std::remove_cv_t<decltype(Cfg)>>::template value<Args...>);
+    // Step 4: check the presence of the required named arguments.
+    requires(detail::all_required_arguments_are_present<std::remove_cv_t<decltype(Cfg)>>::template value<Args...>);
+    // Step 5: check the validators.
+    requires(detail::validate_validators<std::remove_cv_t<decltype(Cfg)>>::template value<Args...>);
+    // Step 6: run the validators.
+    requires(detail::validate_named_arguments<std::remove_cv_t<decltype(Cfg)>>::template value<Args...>);
+};
 
 // NOTE: implement some of the parser functionality as free functions, which will then be wrapped by static constexpr
 // member functions in the parser class. These free functions can be used where a parser object is not available (e.g.,

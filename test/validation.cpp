@@ -30,6 +30,7 @@ using namespace igor;
 constexpr auto arg1 = make_named_argument();
 constexpr auto arg2 = make_named_argument();
 constexpr auto arg3 = make_named_argument();
+constexpr auto arg4 = make_named_argument();
 
 // Invalid validator (non-constexpr call operator).
 struct invalid_validator {
@@ -65,7 +66,7 @@ constexpr auto cfg_simple_validation
 template <typename... KwArgs>
 bool simple_validation(const KwArgs &...)
 {
-    return validate<KwArgs...>(cfg_simple_validation);
+    return validate<cfg_simple_validation, KwArgs...>;
 }
 
 TEST_CASE("simple validation")
@@ -76,4 +77,50 @@ TEST_CASE("simple validation")
     REQUIRE(simple_validation(arg1 = 1, arg2 = 2));
     REQUIRE(simple_validation(arg1 = 1, arg3 = 2, arg2 = 2));
     REQUIRE(!simple_validation(arg1 = 1, arg3 = 2.1, arg2 = 2));
+    REQUIRE(!simple_validation(arg1 = 1, arg3 = 2, arg2 = 2, 123));
+    REQUIRE(!simple_validation(arg1 = 1, arg3 = 2, arg2 = 2, arg4 = 5));
+}
+
+constexpr auto cfg_allow_unnamed
+    = config<descr<arg1>{.required = true}, descr<arg2>{},
+             descr<arg3, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{.allow_unnamed = true};
+
+template <typename... KwArgs>
+bool allow_unnamed_validation(const KwArgs &...)
+{
+    return validate<cfg_allow_unnamed, KwArgs...>;
+}
+
+TEST_CASE("allow unnamed")
+{
+    REQUIRE(allow_unnamed_validation(arg1 = 1, arg3 = 2, arg2 = 2, 123));
+}
+
+constexpr auto cfg_allow_extra
+    = config<descr<arg1>{.required = true}, descr<arg2>{},
+             descr<arg3, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{.allow_extra = true};
+
+template <typename... KwArgs>
+bool allow_extra_validation(const KwArgs &...)
+{
+    return validate<cfg_allow_extra, KwArgs...>;
+}
+
+TEST_CASE("allow extra")
+{
+    REQUIRE(allow_extra_validation(arg1 = 1, arg3 = 2, arg2 = 2, arg4 = 5));
+}
+
+constexpr auto cfg_wrong_validator
+    = config<descr<arg1>{.required = true}, descr<arg2>{}, descr<arg3, []() {}>{}>{.allow_extra = true};
+
+template <typename... KwArgs>
+bool wrong_validator_validation(const KwArgs &...)
+{
+    return validate<cfg_wrong_validator, KwArgs...>;
+}
+
+TEST_CASE("wrong validator")
+{
+    REQUIRE(!wrong_validator_validation(arg1 = 1, arg3 = 2, arg2 = 2, arg4 = 5));
 }
