@@ -286,7 +286,7 @@ consteval bool validate(config<Descrs...> cfg)
     }
 
     // Step 2: check that there are no duplicate named arguments in Args.
-    constexpr auto check_one_unique_na = []<typename Arg>() {
+    [[maybe_unused]] constexpr auto check_one_unique_na = []<typename Arg>() {
         using arg_u = std::remove_cvref_t<Arg>;
 
         if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
@@ -303,7 +303,7 @@ consteval bool validate(config<Descrs...> cfg)
 
     // Step 3: if allow_extra is not activated, check that every named argument has a descriptor.
     if (!cfg.allow_extra) {
-        constexpr auto has_descr = []<typename Arg>(auto... descrs) {
+        [[maybe_unused]] constexpr auto has_descr = []<typename Arg>(auto... descrs) {
             using arg_u = std::remove_cvref_t<Arg>;
 
             if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
@@ -342,7 +342,7 @@ consteval bool validate(config<Descrs...> cfg)
     }
 
     // Step 5: run the validators.
-    constexpr auto validate_one_na = []<typename Arg>(auto... descrs) {
+    [[maybe_unused]] constexpr auto validate_one_na = []<typename Arg>(auto... descrs) {
         using arg_u = std::remove_cvref_t<Arg>;
 
         if constexpr (detail::is_tagged_ref_any<arg_u>::value) {

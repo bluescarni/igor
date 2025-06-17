@@ -18,6 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <concepts>
+#include <type_traits>
+
 #include <igor/igor.hpp>
 
 #include <catch2/catch_test_macros.hpp>
@@ -25,6 +28,8 @@
 using namespace igor;
 
 constexpr auto arg1 = make_named_argument();
+constexpr auto arg2 = make_named_argument();
+constexpr auto arg3 = make_named_argument();
 
 // Invalid validator (non-constexpr call operator).
 struct invalid_validator {
@@ -45,34 +50,30 @@ struct valid_validator {
 
 TEST_CASE("valid descr validator concept")
 {
-    // NOTE: I think GCC has a bug here.
+    // NOTE: I think GCC has a bug here: concept will evaluate to true despite the fact that the invalid validator's
+    // call operator is not usable in a constant expression.
 #if defined(__clang__) || defined(_MSC_VER)
-    REQUIRE(!igor::valid_descr_validator<invalid_validator{}, int>);
+    REQUIRE(!valid_descr_validator<invalid_validator{}, int>);
 #endif
-    REQUIRE(igor::valid_descr_validator<valid_validator{}, int>);
+    REQUIRE(valid_descr_validator<valid_validator{}, int>);
 }
 
-#if 0 
+constexpr auto cfg_simple_validation
+    = config<descr<arg1>{.required = true}, descr<arg2>{},
+             descr<arg3, []<typename T> { return std::integral<std::remove_cvref_t<T>>; }>{}>{};
 
 template <typename... KwArgs>
-    requires(validate<KwArgs...>(
-        config<descr<arg1, []<typename T>() { return std::integral<std::remove_cvref_t<T>>; }>{}>{}))
-void foo(const KwArgs &...)
+bool simple_validation(const KwArgs &...)
 {
+    return validate<KwArgs...>(cfg_simple_validation);
 }
 
-struct flap {
-    template <typename>
-    bool operator()() const
-    {
-        return true;
-    }
-};
-
-TEST_CASE("validation")
+TEST_CASE("simple validation")
 {
-    foo(arg1 = 1);
-    REQUIRE(!valid_descr_validator<flap{}, int>);
+    REQUIRE(!simple_validation());
+    REQUIRE(simple_validation(arg1 = 1));
+    REQUIRE(!simple_validation(arg2 = 1));
+    REQUIRE(simple_validation(arg1 = 1, arg2 = 2));
+    REQUIRE(simple_validation(arg1 = 1, arg3 = 2, arg2 = 2));
+    REQUIRE(!simple_validation(arg1 = 1, arg3 = 2.1, arg2 = 2));
 }
-
-#endif
