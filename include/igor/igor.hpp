@@ -28,7 +28,25 @@
 #include <type_traits>
 #include <utility>
 
+#define IGOR_VERSION_STRING "1.0.0"
+#define IGOR_VERSION_MAJOR 1
+#define IGOR_VERSION_MINOR 0
+#define IGOR_VERSION_PATCH 0
+
+#if defined(__GNUC__) || defined(__clang__)
+
+#define IGOR_ABI_TAG_ATTR __attribute__((abi_tag))
+
+#else
+
+#define IGOR_ABI_TAG_ATTR
+
+#endif
+
 namespace igor
+{
+
+inline namespace v1 IGOR_ABI_TAG_ATTR
 {
 
 namespace detail
@@ -603,6 +621,10 @@ consteval auto make_named_argument()
     return named_argument<T, ExplicitType>{};
 }
 
+} // namespace v1 IGOR_ABI_TAG_ATTR
+
 } // namespace igor
+
+#undef IGOR_ABI_TAG_ATTR
 
 #endif
