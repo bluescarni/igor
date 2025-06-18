@@ -521,6 +521,30 @@ consteval bool has_duplicates()
     return (... || detail::is_repeated_named_argument<Args, Args...>());
 }
 
+// Remove from the set of variadic arguments args the named arguments NArgs.
+//
+// The result is returned as a tuple of perfectly-forwarded references.
+template <auto... NArgs, typename... Args>
+    requires(any_named_argument_cv<NArgs> && ...)
+constexpr auto pop_named_arguments(Args &&...args)
+{
+    [[maybe_unused]] constexpr auto filter = []<typename T>(T &&x) {
+        using Tu = std::remove_cvref_t<T>;
+
+        if constexpr (detail::any_tagged_ref<Tu>) {
+            if constexpr ((... || std::same_as<typename decltype(NArgs)::tag_type, typename Tu::tag_type>)) {
+                return std::tuple{};
+            } else {
+                return std::forward_as_tuple(std::forward<T>(x));
+            }
+        } else {
+            return std::forward_as_tuple(std::forward<T>(x));
+        }
+    };
+
+    return std::tuple_cat(filter(std::forward<Args>(args))...);
+}
+
 namespace detail
 {
 

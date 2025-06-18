@@ -21,6 +21,7 @@
 #include <concepts>
 #include <initializer_list>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -395,6 +396,55 @@ TEST_CASE("as_const")
     // NOLINTNEXTLINE(misc-const-correctness)
     std::string foo = "hello world";
     REQUIRE((std::same_as<const std::string &, decltype(as_const_outer(arg1 = foo))>));
+}
+
+TEST_CASE("pop_named_arguments")
+{
+    REQUIRE(pop_named_arguments() == std::tuple{});
+    REQUIRE((std::same_as<decltype(pop_named_arguments(1, 2.3)), std::tuple<int &&, double &&>>));
+
+    {
+        const std::string foo = "hello world";
+        double x = 42;
+        auto ret = pop_named_arguments(foo, x);
+        REQUIRE(&std::get<0>(ret) == &foo);
+        REQUIRE(&std::get<1>(ret) == &x);
+        REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
+    }
+
+    {
+        const std::string foo = "hello world";
+        double x = 42;
+        auto ret = pop_named_arguments(foo, x);
+        REQUIRE(&std::get<0>(ret) == &foo);
+        REQUIRE(&std::get<1>(ret) == &x);
+        REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
+    }
+
+    {
+        const std::string foo = "hello world";
+        double x = 42;
+        int n = 25;
+        const auto tref = (arg1 = n);
+        auto ret = pop_named_arguments<arg2>(foo, tref, x, arg2 = 6.7f);
+        REQUIRE(std::tuple_size_v<decltype(ret)> == 3u);
+        REQUIRE(&std::get<0>(ret) == &foo);
+        REQUIRE(&std::get<1>(ret).value == &n);
+        REQUIRE(&std::get<2>(ret) == &x);
+    }
+
+    {
+        const std::string foo = "hello world";
+        double x = 42;
+        int n = 25;
+        const auto tref1 = (arg1 = n);
+        auto f = 6.7f;
+        const auto tref2 = (arg2 = f);
+        auto ret = pop_named_arguments<arg1, arg2>(foo, tref1, x, tref2);
+        REQUIRE(std::tuple_size_v<decltype(ret)> == 2u);
+        REQUIRE(&std::get<0>(ret) == &foo);
+        REQUIRE(&std::get<1>(ret) == &x);
+    }
 }
 
 // clang-format off
