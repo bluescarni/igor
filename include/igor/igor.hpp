@@ -171,21 +171,6 @@ template <typename Tag, typename ExplicitType>
 struct is_any_named_argument<named_argument<Tag, ExplicitType>> : std::true_type {
 };
 
-// Implementation of parsers' constructor.
-template <typename... Args>
-constexpr auto parser_ctor_impl(const Args &...args)
-{
-    [[maybe_unused]] const auto filter_na = []<typename T>(const T &x) {
-        if constexpr (any_tagged_ref<T>) {
-            return std::forward_as_tuple(x);
-        } else {
-            return std::tuple{};
-        }
-    };
-
-    return std::tuple_cat(filter_na(args)...);
-}
-
 } // namespace detail
 
 // Concept to detect cv-qualified named arguments.
@@ -507,11 +492,36 @@ consteval bool has_duplicates()
     return (... || detail::is_repeated_named_argument<Args, Args...>());
 }
 
+namespace detail
+{
+
+// Implementation of parsers' constructor.
+//
+// This function will examine all input arguments and return a tuple of references to the tagged reference arguments.
+// All other arguments will be discarded.
+template <typename... Args>
+constexpr auto parser_ctor_impl(const Args &...args)
+{
+    [[maybe_unused]] constexpr auto filter_na = []<typename T>(const T &x) {
+        if constexpr (any_tagged_ref<T>) {
+            return std::forward_as_tuple(x);
+        } else {
+            return std::tuple{};
+        }
+    };
+
+    return std::tuple_cat(filter_na(args)...);
+}
+
+} // namespace detail
+
 // Parser for named arguments in a function call.
 template <typename... ParseArgs>
 class parser
 {
     using tuple_t = decltype(detail::parser_ctor_impl(std::declval<const ParseArgs &>()...));
+
+    tuple_t m_nargs;
 
 public:
     constexpr explicit parser(const ParseArgs &...parse_args) : m_nargs(detail::parser_ctor_impl(parse_args...)) {}
@@ -585,9 +595,6 @@ public:
     {
         return igor::has_duplicates<ParseArgs...>();
     }
-
-private:
-    tuple_t m_nargs;
 };
 
 template <typename ExplicitType = void, typename T = decltype([] {})>
