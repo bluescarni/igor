@@ -639,6 +639,8 @@ consteval auto make_named_argument()
 
 } // namespace igor
 
+#define IGOR_MAKE_NAMED_ARGUMENT(arg) inline constexpr auto arg = igor::make_named_argument()
+
 #undef IGOR_ABI_TAG_ATTR
 
 #endif

@@ -36,7 +36,7 @@
 using namespace igor;
 
 constexpr auto arg1 = make_named_argument();
-constexpr auto arg2 = make_named_argument();
+IGOR_MAKE_NAMED_ARGUMENT(arg2);
 constexpr auto arg3 = make_named_argument();
 constexpr auto arg4 = make_named_argument<const char *&&>();
 constexpr auto arg5 = make_named_argument<const double &>();
