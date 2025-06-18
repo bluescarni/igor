@@ -85,6 +85,7 @@ struct named_argument {
     // NOTE: make sure this does not interfere with the copy/move assignment operators.
     template <typename T>
         requires(!std::same_as<named_argument, std::remove_cvref_t<T>>)
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(T &&x) const
     {
         return detail::tagged_ref<Tag, T &&>{std::forward<T>(x)};
@@ -92,21 +93,25 @@ struct named_argument {
 
     // Add overloads for std::initializer_list as well.
     template <typename T>
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(const std::initializer_list<T> &l) const
     {
         return detail::tagged_ref<Tag, const std::initializer_list<T> &>{l};
     }
     template <typename T>
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(std::initializer_list<T> &l) const
     {
         return detail::tagged_ref<Tag, std::initializer_list<T> &>{l};
     }
     template <typename T>
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(std::initializer_list<T> &&l) const
     {
         return detail::tagged_ref<Tag, std::initializer_list<T> &&>{std::move(l)};
     }
     template <typename T>
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(const std::initializer_list<T> &&l) const
     {
         return detail::tagged_ref<Tag, const std::initializer_list<T> &&>{std::move(l)};
@@ -122,13 +127,16 @@ struct named_argument<Tag, ExplicitType> {
     // NOTE: disable implicit conversion, deduced type needs to be the same as explicit type.
     template <typename T>
         requires std::same_as<T &&, ExplicitType>
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(T &&x) const
     {
         return detail::tagged_ref<Tag, ExplicitType>{std::forward<T>(x)};
     }
 
-    // NOTE: enable implicit conversion with curly braces
-    // and copy-list/aggregate initialization with double curly braces.
+    // NOTE: enable implicit conversion with curly braces and copy-list/aggregate initialization with double curly
+    // braces.
+    //
+    // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
     constexpr auto operator=(detail::tagged_ref<Tag, ExplicitType> &&tc) const
     {
         return std::move(tc);
@@ -482,8 +490,9 @@ consteval bool has_other_than(const named_argument<Tags, ExplicitTypes> &...narg
     // NOTE: the first fold expression will return how many of the nargs
     // are in the pack. The second fold expression will return the total number
     // of named arguments in the pack.
-    return (std::size_t(0) + ... + static_cast<std::size_t>(igor::has<Args...>(nargs)))
-           < (std::size_t(0) + ... + static_cast<std::size_t>(detail::any_tagged_ref<std::remove_cvref_t<Args>>));
+    return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(igor::has<Args...>(nargs)))
+           < (static_cast<std::size_t>(0) + ...
+              + static_cast<std::size_t>(detail::any_tagged_ref<std::remove_cvref_t<Args>>));
 }
 
 namespace detail
@@ -496,7 +505,9 @@ consteval bool is_repeated_named_argument()
     using Tu = std::remove_cvref_t<T>;
 
     if constexpr (any_tagged_ref<Tu>) {
-        return (std::size_t(0) + ... + static_cast<std::size_t>(std::same_as<Tu, std::remove_cvref_t<Args>>)) > 1u;
+        return (static_cast<std::size_t>(0) + ...
+                + static_cast<std::size_t>(std::same_as<Tu, std::remove_cvref_t<Args>>))
+               > 1u;
     } else {
         return false;
     }
@@ -551,6 +562,9 @@ private:
     constexpr decltype(auto) fetch_one_impl([[maybe_unused]] const named_argument<Tag, ExplicitType> &narg) const
     {
         if constexpr (I == std::tuple_size_v<tuple_t>) {
+            // NOTE: clang-tidy is wrong here, we do need the cast to const ref otherwise we return a copy of the
+            // not_provided object.
+            // NOLINTNEXTLINE(readability-redundant-casting)
             return static_cast<const not_provided_t &>(not_provided);
         } else if constexpr (std::same_as<typename std::remove_cvref_t<std::tuple_element_t<I, tuple_t>>::tag_type,
                                           Tag>) {

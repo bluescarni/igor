@@ -29,6 +29,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+// clang-format off
+// NOLINTBEGIN(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
+// clang-format on
+
 using namespace igor;
 
 constexpr auto arg1 = make_named_argument();
@@ -38,9 +42,9 @@ constexpr auto arg4 = make_named_argument<const char *&&>();
 constexpr auto arg5 = make_named_argument<const double &>();
 
 template <typename... Args>
-inline auto f_00(Args &&...args)
+inline auto f_00(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     constexpr bool check = p.has_all(arg1, arg2);
     REQUIRE(check);
     REQUIRE(!p.has(arg3));
@@ -50,9 +54,9 @@ inline auto f_00(Args &&...args)
 }
 
 template <typename... Args>
-inline auto f_01(Args &&...args)
+inline auto f_01(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -65,9 +69,9 @@ inline auto f_01(Args &&...args)
 }
 
 template <typename... Args>
-inline auto f_02(Args &&...args)
+inline auto f_02(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE(p.has_all(arg1, arg2));
     REQUIRE(!p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -79,9 +83,9 @@ inline auto f_02(Args &&...args)
 }
 
 template <typename... Args>
-inline auto f_03(Args &&...args)
+inline auto f_03(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE(p.has_all(arg1, arg5, arg2));
     REQUIRE(p.has(arg3));
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
@@ -98,17 +102,17 @@ inline auto f_03(Args &&...args)
 }
 
 template <typename... Args>
-inline auto f_04(Args &&...args)
+inline auto f_04(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     constexpr auto ha = p.has_any(arg1, arg3, arg5);
     return ha;
 }
 
 template <typename... Args>
-inline auto f_05(Args &&...args)
+inline auto f_05(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE(p.has(arg1));
     REQUIRE(std::is_lvalue_reference_v<decltype(p(arg1))>);
 }
@@ -145,9 +149,9 @@ TEST_CASE("test_has")
 }
 
 template <typename... Args>
-inline auto unnamed_00(Args &&...args)
+inline auto unnamed_00(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     constexpr bool hua = p.has_unnamed_arguments();
     return hua;
 }
@@ -167,9 +171,9 @@ TEST_CASE("test_has_unnamed_args")
 }
 
 template <typename... Args>
-inline auto other_than_00(Args &&...args)
+inline auto other_than_00(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     constexpr bool hot = p.has_other_than(arg1, arg3);
     return hot;
 }
@@ -188,6 +192,7 @@ TEST_CASE("test_has_other_than")
     REQUIRE(!other_than_00(42));
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions,hicpp-special-member-functions)
 struct move_only {
     move_only() = default;
     move_only(move_only &&) = default;
@@ -197,11 +202,11 @@ struct move_only {
 };
 
 template <typename... Args>
-inline void move_argument(Args &&...args)
+inline void move_argument(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE(std::is_rvalue_reference_v<decltype(p(arg1))>);
-    [[maybe_unused]] move_only inner{std::move(p(arg1))};
+    [[maybe_unused]] const move_only inner{std::move(p(arg1))};
 }
 
 TEST_CASE("test_move_only")
@@ -212,9 +217,9 @@ TEST_CASE("test_move_only")
 }
 
 template <typename... Args>
-inline auto test_init_list(Args &&...args)
+inline auto test_init_list(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     return p(arg1);
 }
 
@@ -233,9 +238,9 @@ inline void inner(T &&, U &&)
 }
 
 template <typename... Args>
-inline void outer(Args &&...args)
+inline void outer(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     auto [a, b] = p(arg1, arg2);
     inner(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b));
 }
@@ -248,9 +253,9 @@ TEST_CASE("test_perfect_forward")
 }
 
 template <typename... Args>
-inline bool not_provided_test(Args &&...args)
+inline bool not_provided_test(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     auto [a, b] = p(arg1, arg2);
     if constexpr (std::is_same_v<decltype(a), const not_provided_t &>) {
         return &a == &not_provided;
@@ -269,14 +274,10 @@ TEST_CASE("test_not_provided")
 }
 
 template <typename... Args>
-inline bool has_duplicates_test(Args &&...args)
+inline bool has_duplicates_test(const Args &...args)
 {
-    parser p{args...};
-    if constexpr (p.has_duplicates()) {
-        return true;
-    } else {
-        return false;
-    }
+    const parser p{args...};
+    return static_cast<bool>(p.has_duplicates());
 }
 
 TEST_CASE("test_has_duplicates")
@@ -295,15 +296,15 @@ TEST_CASE("test_has_duplicates")
 }
 
 template <typename... Args>
-inline constexpr auto sum(Args &&...args)
+constexpr auto sum(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
 
-    if constexpr (!p.has_all(arg1, arg2, arg3))
+    if constexpr (!p.has_all(arg1, arg2, arg3)) {
         return -1;
-    else {
+    } else {
         auto [a1, a2, a3] = p(arg1, arg2, arg3);
-        return a1 + a2 * a3;
+        return a1 + (a2 * a3);
     }
 }
 
@@ -317,17 +318,17 @@ TEST_CASE("constexprness")
 }
 
 template <typename... Args>
-inline bool has_only_cstring_allowed_test(Args &&...args)
+inline bool has_only_cstring_allowed_test(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE((!p.has(arg4) || std::is_same_v<decltype(p(arg4)), const char *&&>));
     return p.has(arg4);
 }
 
 template <typename... Args>
-inline bool has_only_cdoubleref_allowed_test(Args &&...args)
+inline bool has_only_cdoubleref_allowed_test(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
     REQUIRE((!p.has(arg5) || std::is_same_v<decltype(p(arg5)), const double &>));
     return p.has(arg5);
 }
@@ -344,6 +345,7 @@ TEST_CASE("explicit_typed_arguments")
     REQUIRE(!std::is_assignable_v<decltype(arg4), decltype((testStr))>);
     REQUIRE(has_only_cstring_allowed_test(arg4 = static_cast<const char *>("hello")));
     REQUIRE(has_only_cstring_allowed_test(arg4 = {"hello"}));
+    // NOLINTNEXTLINE(hicpp-move-const-arg,performance-move-const-arg,bugprone-use-after-move,hicpp-invalid-access-moved)
     REQUIRE(has_only_cstring_allowed_test(arg4 = std::move(testStr)));
     REQUIRE(!has_only_cstring_allowed_test());
 
@@ -359,9 +361,9 @@ TEST_CASE("explicit_typed_arguments")
 }
 
 template <typename... Args>
-inline auto repeated_args(Args &&...args)
+inline auto repeated_args(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
 
     return p(arg1);
 }
@@ -376,7 +378,7 @@ TEST_CASE("repeated_arguments")
 template <typename... Args>
 decltype(auto) as_const_inner(const Args &...args)
 {
-    parser p{args...};
+    const parser p{args...};
 
     return p(arg1);
 }
@@ -390,6 +392,11 @@ decltype(auto) as_const_outer(const Args &...args)
 TEST_CASE("as_const")
 {
     REQUIRE((std::same_as<const int &, decltype(as_const_outer(arg1 = 5))>));
+    // NOLINTNEXTLINE(misc-const-correctness)
     std::string foo = "hello world";
     REQUIRE((std::same_as<const std::string &, decltype(as_const_outer(arg1 = foo))>));
 }
+
+// clang-format off
+// NOLINTEND(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
+// clang-format on

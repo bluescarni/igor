@@ -25,6 +25,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+// clang-format off
+// NOLINTBEGIN(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
+// clang-format on
+
 using namespace igor;
 
 constexpr auto arg1 = make_named_argument();
@@ -124,3 +128,7 @@ TEST_CASE("wrong validator")
 {
     REQUIRE(!wrong_validator_validation(arg1 = 1, arg3 = 2, arg2 = 2, arg4 = 5));
 }
+
+// clang-format off
+// NOLINTEND(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
+// clang-format on
