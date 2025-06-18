@@ -15,8 +15,9 @@ A minimal example:
 
 using namespace igor;
 
-// Create a named argument called "arg1".
+// Create named arguments called "arg1" and "arg2".
 inline constexpr auto arg1 = make_named_argument();
+inline constexpr auto arg2 = make_named_argument();
 
 // A variadic function accepting named arguments.
 template <typename ... Args>
@@ -82,7 +83,7 @@ a ``const`` reference to a global object of the special type ``not_provided_t``:
 
 ```c++
 #include <cassert>
-#include <type_traits>
+#include <concepts>
 
 template <typename ... Args>
 void missing_arg(Args && ... args)
