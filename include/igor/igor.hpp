@@ -54,7 +54,7 @@ struct tagged_ref {
 // reference. This is useful in order to enforce const reference access semantics to an argument (in the same spirit as
 // std::as_const()).
 template <typename Tag, typename T>
-auto as_const_kwarg(const detail::tagged_ref<Tag, T> &tc)
+auto as_const(const detail::tagged_ref<Tag, T> &tc)
 {
     return detail::tagged_ref<Tag, decltype(std::as_const(tc.value))>{std::as_const(tc.value)};
 }
@@ -499,8 +499,7 @@ namespace detail
 //
 // This function will examine all input arguments and return a tuple of references to the tagged reference arguments.
 // All other arguments will be discarded.
-template <typename... Args>
-constexpr auto parser_ctor_impl(const Args &...args)
+constexpr auto parser_ctor_impl(const auto &...args)
 {
     [[maybe_unused]] constexpr auto filter_na = []<typename T>(const T &x) {
         if constexpr (any_tagged_ref<T>) {
@@ -598,6 +597,7 @@ public:
 };
 
 template <typename ExplicitType = void, typename T = decltype([] {})>
+    requires std::same_as<ExplicitType, void> || (std::is_reference_v<ExplicitType>)
 consteval auto make_named_argument()
 {
     return named_argument<T, ExplicitType>{};

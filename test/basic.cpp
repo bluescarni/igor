@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <concepts>
 #include <initializer_list>
 #include <string>
 #include <type_traits>
@@ -370,4 +371,25 @@ TEST_CASE("repeated_arguments")
     REQUIRE(repeated_args(arg1 = 5) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6) == 5);
     REQUIRE(repeated_args(arg1 = 5, arg1 = 6, arg1 = 7) == 5);
+}
+
+template <typename... Args>
+decltype(auto) as_const_inner(const Args &...args)
+{
+    parser p{args...};
+
+    return p(arg1);
+}
+
+template <typename... Args>
+decltype(auto) as_const_outer(const Args &...args)
+{
+    return as_const_inner(as_const(args...));
+}
+
+TEST_CASE("as_const")
+{
+    REQUIRE((std::same_as<const int &, decltype(as_const_outer(arg1 = 5))>));
+    std::string foo = "hello world";
+    REQUIRE((std::same_as<const std::string &, decltype(as_const_outer(arg1 = foo))>));
 }
