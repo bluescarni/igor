@@ -1,9 +1,9 @@
 # igor
 
-![language](https://img.shields.io/badge/language-C%2B%2B17-red.svg?style=for-the-badge)
+![language](https://img.shields.io/badge/language-C%2B%2B20-red.svg?style=for-the-badge)
 ![license](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)
 
-igor (pronounced *eye-gor*) is a small, unpretentious, self-contained and header-only C++17
+igor (pronounced *eye-gor*) is a small, unpretentious, self-contained and header-only C++20
 library implementing named function arguments (AKA keyword arguments, named parameters, etc.).
 A minimal example:
 
@@ -16,10 +16,7 @@ A minimal example:
 using namespace igor;
 
 // Create a named argument called "arg1".
-inline constexpr auto arg1 = named_argument<struct arg1_tag>{};
-
-// You can also use a macro (ew, gross!).
-IGOR_MAKE_NAMED_ARGUMENT(arg2);
+inline constexpr auto arg1 = make_named_argument();
 
 // A variadic function accepting named arguments.
 template <typename ... Args>
@@ -33,8 +30,10 @@ int main()
 {
     using namespace std::literals;
 
+    // This will print "hello, world".
     std::cout << adder(arg1 = "hello, "s, arg2 = "world") << '\n';
 
+    // This will print "42".
     std::cout << "The ultimate answer is: " << adder(arg2 = 20, arg1 = 22) << '\n';
 
     return 0;
@@ -94,7 +93,7 @@ void missing_arg(Args && ... args)
     auto [a, b] = p(arg1, arg2);
 
     if (!p.has(arg1)) {
-        assert(std::is_same_v<decltype(a), const not_provided_t &>);
+        assert(std::same_as<decltype(a), const not_provided_t &>);
     }
 }
 ```
@@ -105,13 +104,10 @@ igor is ``if constexpr`` friendly, thus you can easily do compile-time dispatchi
 presence of a specific named argument and/or its type:
 
 ```c++
+#include <concepts>
 #include <iostream>
 #include <string>
 #include <type_traits>
-
-// Handy alias.
-template <typename T>
-using uncvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 template <typename ... Args>
 void arg_dispatch(Args && ... args)
@@ -121,9 +117,9 @@ void arg_dispatch(Args && ... args)
     auto [a, b] = p(arg1, arg2);
 
     if constexpr (p.has(arg1)) {
-        if constexpr (std::is_same_v<uncvref_t<decltype(a)>, int>) {
+        if constexpr (std::same_as<std::remove_cvref_t<decltype(a)>, int>) {
             std::cout << "arg1 is an int. arg1 + 2 is: " << (a + 2) << ".\n";
-        } else if constexpr (std::is_same_v<uncvref_t<decltype(a)>, std::string>) {
+        } else if constexpr (std::is_same_v<std::remove_cvref_t<decltype(a)>, std::string>) {
             std::cout << "arg1 is a string. arg1 has a size of " << a.size() << ".\n";
         } else {
             std::cout << "arg1 is some type other than int or string.\n";
