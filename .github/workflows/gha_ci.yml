@@ -38,3 +38,9 @@ jobs:
           cmake ../ -G "Visual Studio 17 2022" -A x64 -DIGOR_BUILD_TESTS=yes
           cmake --build . --config Debug -j2
           ctest -j4 -V -C Debug
+  clang_tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash tools/gha_clang_tidy.sh
