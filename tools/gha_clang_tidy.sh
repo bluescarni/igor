@@ -32,7 +32,6 @@ cmake ../ -G Ninja \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -Og" \
     -DIGOR_BUILD_TESTS=yes \
     -DCMAKE_CXX_CLANG_TIDY=`which clang-tidy` \
-    -DCMAKE_C_COMPILER=clang \
     -DCMAKE_CXX_COMPILER=clang++
 
 # Build.
