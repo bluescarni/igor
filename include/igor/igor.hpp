@@ -155,12 +155,12 @@ template <typename T>
 struct is_tagged_ref_any : std::false_type {
 };
 
-template <typename T>
-concept any_tagged_ref = is_tagged_ref_any<T>::value;
-
 template <typename Tag, typename T>
 struct is_tagged_ref_any<tagged_ref<Tag, T>> : std::true_type {
 };
+
+template <typename T>
+concept any_tagged_ref = is_tagged_ref_any<T>::value;
 
 // Type trait to detect named arguments.
 template <typename>
@@ -172,14 +172,11 @@ struct is_any_named_argument<named_argument<Tag, ExplicitType>> : std::true_type
 };
 
 // Implementation of parsers' constructor.
-//
-// This function will take a set of input arguments (as const ref) and will filter out the named arguments (which are
-// returned as a tuple of const references).
 template <typename... Args>
-constexpr inline auto build_parser_tuple(const Args &...args)
+constexpr auto parser_ctor_impl(const Args &...args)
 {
     [[maybe_unused]] const auto filter_na = []<typename T>(const T &x) {
-        if constexpr (is_tagged_ref_any<T>::value) {
+        if constexpr (any_tagged_ref<T>) {
             return std::forward_as_tuple(x);
         } else {
             return std::tuple{};
@@ -199,8 +196,8 @@ namespace detail
 {
 
 // An always-true concept for use below.
-template <auto>
-concept always_true_nttp = true;
+template <bool>
+concept always_true = true;
 
 } // namespace detail
 
@@ -209,7 +206,7 @@ template <auto V, typename T>
 concept valid_descr_validator = requires {
     { V.template operator()<T>() } -> std::same_as<bool>;
     // NOTE: this part checks that the call operator of V is usable at compile-time.
-    requires detail::always_true_nttp<V.template operator()<T>()>;
+    requires detail::always_true<V.template operator()<T>()>;
 };
 
 template <auto NA, auto Validator = []<typename>() { return true; }>
@@ -375,7 +372,7 @@ consteval bool validate_one_validator(auto descr)
     constexpr auto check_single_arg = []<typename Arg>(auto d) {
         using arg_u = std::remove_cvref_t<Arg>;
 
-        if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
+        if constexpr (any_tagged_ref<arg_u>) {
             if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
                 // NOTE: here we are checking if the validator is properly implemented.
                 return requires { d.template validate<typename arg_u::value_type>(); };
@@ -404,7 +401,7 @@ consteval bool validate_one_named_argument(auto... descrs)
 {
     using arg_u = std::remove_cvref_t<Arg>;
 
-    if constexpr (detail::is_tagged_ref_any<arg_u>::value) {
+    if constexpr (any_tagged_ref<arg_u>) {
         constexpr auto check_single_descr = [](auto d) {
             if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
                 return d.template validate<typename arg_u::value_type>();
@@ -473,7 +470,7 @@ consteval bool has_any(const named_argument<Tags, ExplicitTypes> &...nargs)
 template <typename... Args>
 consteval bool has_unnamed_arguments()
 {
-    return (... || !detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value);
+    return (... || !detail::any_tagged_ref<std::remove_cvref_t<Args>>);
 }
 
 template <typename... Args, typename... Tags, typename... ExplicitTypes>
@@ -483,8 +480,7 @@ consteval bool has_other_than(const named_argument<Tags, ExplicitTypes> &...narg
     // are in the pack. The second fold expression will return the total number
     // of named arguments in the pack.
     return (std::size_t(0) + ... + static_cast<std::size_t>(igor::has<Args...>(nargs)))
-           < (std::size_t(0) + ...
-              + static_cast<std::size_t>(detail::is_tagged_ref_any<std::remove_cvref_t<Args>>::value));
+           < (std::size_t(0) + ... + static_cast<std::size_t>(detail::any_tagged_ref<std::remove_cvref_t<Args>>));
 }
 
 namespace detail
@@ -496,8 +492,8 @@ consteval bool is_repeated_named_argument()
 {
     using Tu = std::remove_cvref_t<T>;
 
-    if constexpr (is_tagged_ref_any<Tu>::value) {
-        return (std::size_t(0) + ... + static_cast<std::size_t>(std::is_same_v<Tu, std::remove_cvref_t<Args>>)) > 1u;
+    if constexpr (any_tagged_ref<Tu>) {
+        return (std::size_t(0) + ... + static_cast<std::size_t>(std::same_as<Tu, std::remove_cvref_t<Args>>)) > 1u;
     } else {
         return false;
     }
@@ -515,10 +511,10 @@ consteval bool has_duplicates()
 template <typename... ParseArgs>
 class parser
 {
-    using tuple_t = decltype(detail::build_parser_tuple(std::declval<const ParseArgs &>()...));
+    using tuple_t = decltype(detail::parser_ctor_impl(std::declval<const ParseArgs &>()...));
 
 public:
-    constexpr explicit parser(const ParseArgs &...parse_args) : m_nargs(detail::build_parser_tuple(parse_args...)) {}
+    constexpr explicit parser(const ParseArgs &...parse_args) : m_nargs(detail::parser_ctor_impl(parse_args...)) {}
 
 private:
     // Fetch the value associated to the input named
@@ -529,8 +525,8 @@ private:
     {
         if constexpr (I == std::tuple_size_v<tuple_t>) {
             return static_cast<const not_provided_t &>(not_provided);
-        } else if constexpr (std::is_same_v<typename std::remove_cvref_t<std::tuple_element_t<I, tuple_t>>::tag_type,
-                                            Tag>) {
+        } else if constexpr (std::same_as<typename std::remove_cvref_t<std::tuple_element_t<I, tuple_t>>::tag_type,
+                                          Tag>) {
             if constexpr (std::is_rvalue_reference_v<decltype(std::get<I>(m_nargs).value)>) {
                 return std::move(std::get<I>(m_nargs).value);
             } else {
