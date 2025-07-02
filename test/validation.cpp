@@ -142,20 +142,33 @@ TEST_CASE("no common named arguments")
 
 TEST_CASE("merge cfg")
 {
-    constexpr auto cfg1 = config<descr<arg1>{.required = true}, descr<arg2>{}>{};
-    constexpr auto cfg2 = config<descr<arg3>{}>{};
+    {
+        constexpr auto cfg1 = config<descr<arg1>{.required = true}, descr<arg2>{}>{};
+        constexpr auto cfg2 = config<descr<arg3>{}>{};
 
-    constexpr auto merge_validation
-        = []<auto cfg, typename... KwArgs>(const KwArgs &...) { return validate<cfg, KwArgs...>; };
-    constexpr auto mcfg = merge_config<cfg1, cfg2>;
-    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5)));
-    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6)));
-    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6, arg2 = 2)));
-    REQUIRE(!(merge_validation.operator()<mcfg>(arg3 = 6)));
+        constexpr auto merge_validation
+            = []<auto cfg, typename... KwArgs>(const KwArgs &...) { return validate<cfg, KwArgs...>; };
+        constexpr auto mcfg = merge_config<cfg1, cfg2>;
+        REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5)));
+        REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6)));
+        REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6, arg2 = 2)));
+        REQUIRE(!(merge_validation.operator()<mcfg>(arg3 = 6)));
 
-    constexpr auto cfg2a = config<descr<arg3>{}>{.allow_unnamed = true};
+        constexpr auto cfg2a = config<descr<arg3>{}>{.allow_unnamed = true};
 
-    REQUIRE(!(detail::mergeable_configs<cfg1, cfg2a>));
+        REQUIRE(!(detail::mergeable_configs<cfg1, cfg2a>));
+    }
+
+    {
+        constexpr auto cfg1
+            = config<descr<arg1>{.required = true}, descr<arg2>{}>{.allow_unnamed = true, .allow_extra = true};
+        constexpr auto cfg2 = config<descr<arg3>{}>{.allow_unnamed = true, .allow_extra = true};
+
+        constexpr auto mcfg = merge_config<cfg1, cfg2>;
+
+        REQUIRE(mcfg.allow_extra);
+        REQUIRE(mcfg.allow_unnamed);
+    }
 }
 
 // clang-format off
