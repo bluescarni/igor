@@ -264,7 +264,7 @@ namespace detail
 consteval bool no_duplicate_descrs_impl(auto... Descrs)
 {
     // Helper to compare one descriptor to all Descrs.
-    constexpr auto check_one = [](auto cur_descr, auto... all_descrs) {
+    auto check_one = [](auto cur_descr, auto... all_descrs) {
         return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(cur_descr.na == all_descrs.na)) == 1u;
     };
 
@@ -352,7 +352,7 @@ consteval bool check_one_descr_present(auto descr)
     if (descr.required) {
         using tag_type = typename decltype(descr.na)::tag_type;
 
-        [[maybe_unused]] constexpr auto tags_match = []<typename Arg>() {
+        [[maybe_unused]] auto tags_match = []<typename Arg>() {
             using arg_u = std::remove_cvref_t<Arg>;
 
             if constexpr (any_tagged_ref<arg_u>) {
@@ -380,7 +380,7 @@ struct all_required_arguments_are_present<config<Descrs...>> {
 template <typename... Args>
 consteval bool validate_one_validator(auto descr)
 {
-    constexpr auto check_single_arg = []<typename Arg>(auto d) {
+    auto check_single_arg = []<typename Arg>(auto d) {
         using arg_u = std::remove_cvref_t<Arg>;
 
         if constexpr (any_tagged_ref<arg_u>) {
@@ -413,7 +413,7 @@ consteval bool validate_one_named_argument(auto... descrs)
     using arg_u = std::remove_cvref_t<Arg>;
 
     if constexpr (any_tagged_ref<arg_u>) {
-        constexpr auto check_single_descr = [](auto d) {
+        auto check_single_descr = [](auto d) {
             if constexpr (std::same_as<typename arg_u::tag_type, typename decltype(d.na)::tag_type>) {
                 return d.template validate<typename arg_u::value_type>();
             } else {
@@ -464,7 +464,7 @@ namespace detail
 template <auto... Descrs1, auto... Descrs2>
 consteval bool no_common_named_arguments(config<Descrs1...>, config<Descrs2...>)
 {
-    constexpr auto check_one = [](auto cur_descr1, auto... all_descrs2) {
+    auto check_one = [](auto cur_descr1, auto... all_descrs2) {
         return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(cur_descr1.na == all_descrs2.na)) == 0u;
     };
 
@@ -475,7 +475,7 @@ consteval bool no_common_named_arguments(config<Descrs1...>, config<Descrs2...>)
 template <auto Cfg1, auto Cfg2>
 consteval auto merge_cfg_impl()
 {
-    constexpr auto impl = []<auto... Descrs1, auto... Descrs2>(config<Descrs1...> c1, config<Descrs2...>) {
+    auto impl = []<auto... Descrs1, auto... Descrs2>(config<Descrs1...> c1, config<Descrs2...>) {
         return config<Descrs1..., Descrs2...>{.allow_unnamed = c1.allow_unnamed, .allow_extra = c1.allow_extra};
     };
 
@@ -563,7 +563,7 @@ template <auto... NArgs, typename... Args>
     requires(any_named_argument_cv<NArgs> && ...)
 constexpr auto pop_named_arguments(Args &&...args)
 {
-    [[maybe_unused]] constexpr auto filter = []<typename T>(T &&x) {
+    [[maybe_unused]] auto filter = []<typename T>(T &&x) {
         using Tu = std::remove_cvref_t<T>;
 
         if constexpr (detail::any_tagged_ref<Tu>) {
@@ -589,7 +589,7 @@ namespace detail
 // All other arguments will be discarded.
 constexpr auto parser_ctor_impl(const auto &...args)
 {
-    [[maybe_unused]] constexpr auto filter_na = []<typename T>(const T &x) {
+    [[maybe_unused]] auto filter_na = []<typename T>(const T &x) {
         if constexpr (any_tagged_ref<T>) {
             return std::forward_as_tuple(x);
         } else {
