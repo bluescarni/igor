@@ -129,15 +129,15 @@ TEST_CASE("wrong validator")
     REQUIRE(!wrong_validator_validation(arg1 = 1, arg3 = 2, arg2 = 2, arg4 = 5));
 }
 
-TEST_CASE("no common descrs")
+TEST_CASE("no common named arguments")
 {
     constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
     constexpr auto cfg2 = config<descr<arg3>{}>{};
     constexpr auto cfg3 = config<descr<arg1>{}>{};
-    REQUIRE(detail::no_common_descrs(cfg1, cfg2));
-    REQUIRE(!detail::no_common_descrs(cfg1, cfg1));
-    REQUIRE(detail::no_common_descrs(cfg2, cfg3));
-    REQUIRE(!detail::no_common_descrs(cfg1, cfg3));
+    REQUIRE(detail::no_common_named_arguments(cfg1, cfg2));
+    REQUIRE(!detail::no_common_named_arguments(cfg1, cfg1));
+    REQUIRE(detail::no_common_named_arguments(cfg2, cfg3));
+    REQUIRE(!detail::no_common_named_arguments(cfg1, cfg3));
 }
 
 TEST_CASE("merge cfg")
@@ -147,10 +147,11 @@ TEST_CASE("merge cfg")
 
     constexpr auto merge_validation
         = []<auto cfg, typename... KwArgs>(const KwArgs &...) { return validate<cfg, KwArgs...>; };
-    REQUIRE((merge_validation.operator()<merge_config<cfg1, cfg2>>(arg1 = 5)));
-    REQUIRE((merge_validation.operator()<merge_config<cfg1, cfg2>>(arg1 = 5, arg3 = 6)));
-    REQUIRE((merge_validation.operator()<merge_config<cfg1, cfg2>>(arg1 = 5, arg3 = 6, arg2 = 2)));
-    REQUIRE(!(merge_validation.operator()<merge_config<cfg1, cfg2>>(arg3 = 6)));
+    constexpr auto mcfg = merge_config<cfg1, cfg2>;
+    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5)));
+    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6)));
+    REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6, arg2 = 2)));
+    REQUIRE(!(merge_validation.operator()<mcfg>(arg3 = 6)));
 }
 
 // clang-format off

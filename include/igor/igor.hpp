@@ -460,9 +460,9 @@ concept validate = requires {
 namespace detail
 {
 
-// Helper to check that two config instances have no common descriptors.
+// Helper to check that two config instances have no common named arguments.
 template <auto... Descrs1, auto... Descrs2>
-consteval bool no_common_descrs(config<Descrs1...>, config<Descrs2...>)
+consteval bool no_common_named_arguments(config<Descrs1...>, config<Descrs2...>)
 {
     constexpr auto check_one = [](auto cur_descr1, auto... all_descrs2) {
         return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(cur_descr1.na == all_descrs2.na)) == 0u;
@@ -471,9 +471,8 @@ consteval bool no_common_descrs(config<Descrs1...>, config<Descrs2...>)
     return (... && check_one(Descrs1, Descrs2...));
 }
 
+// Implementation of binary configuration merging.
 template <auto Cfg1, auto Cfg2>
-    requires any_config_cv<Cfg1> && any_config_cv<Cfg2> && (Cfg1.allow_unnamed == Cfg2.allow_unnamed)
-             && (Cfg1.allow_extra == Cfg2.allow_extra) && (no_common_descrs(Cfg1, Cfg2))
 consteval auto merge_cfg_impl()
 {
     constexpr auto impl = []<auto... Descrs1, auto... Descrs2>(config<Descrs1...> c1, config<Descrs2...>) {
@@ -484,7 +483,8 @@ consteval auto merge_cfg_impl()
 }
 
 template <auto Cfg1, auto Cfg2>
-concept mergeable_configs = requires() { detail::merge_cfg_impl<Cfg1, Cfg2>(); };
+concept mergeable_configs = any_config_cv<Cfg1> && any_config_cv<Cfg2> && (Cfg1.allow_unnamed == Cfg2.allow_unnamed)
+                            && (Cfg1.allow_extra == Cfg2.allow_extra) && (no_common_named_arguments(Cfg1, Cfg2));
 
 } // namespace detail
 
