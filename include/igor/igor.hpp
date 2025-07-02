@@ -457,6 +457,41 @@ concept validate = requires {
     requires(detail::validate_named_arguments<std::remove_cv_t<decltype(Cfg)>>::template value<Args...>);
 };
 
+namespace detail
+{
+
+// Helper to check that two config instances have no common descriptors.
+template <auto... Descrs1, auto... Descrs2>
+consteval bool no_common_descrs(config<Descrs1...>, config<Descrs2...>)
+{
+    constexpr auto check_one = [](auto cur_descr1, auto... all_descrs2) {
+        return (static_cast<std::size_t>(0) + ... + static_cast<std::size_t>(cur_descr1.na == all_descrs2.na)) == 0u;
+    };
+
+    return (... && check_one(Descrs1, Descrs2...));
+}
+
+template <auto Cfg1, auto Cfg2>
+    requires any_config_cv<Cfg1> && any_config_cv<Cfg2> && (Cfg1.allow_unnamed == Cfg2.allow_unnamed)
+             && (Cfg1.allow_extra == Cfg2.allow_extra) && (no_common_descrs(Cfg1, Cfg2))
+consteval auto merge_cfg_impl()
+{
+    constexpr auto impl = []<auto... Descrs1, auto... Descrs2>(config<Descrs1...> c1, config<Descrs2...>) {
+        return config<Descrs1..., Descrs2...>{.allow_unnamed = c1.allow_unnamed, .allow_extra = c1.allow_extra};
+    };
+
+    return impl(Cfg1, Cfg2);
+}
+
+template <auto Cfg1, auto Cfg2>
+concept mergeable_configs = requires() { detail::merge_cfg_impl<Cfg1, Cfg2>(); };
+
+} // namespace detail
+
+template <auto Cfg1, auto Cfg2>
+    requires detail::mergeable_configs<Cfg1, Cfg2>
+inline constexpr auto merge_config = detail::merge_cfg_impl<Cfg1, Cfg2>();
+
 // NOTE: implement some of the parser functionality as free functions, which will then be wrapped by static constexpr
 // member functions in the parser class. These free functions can be used where a parser object is not available (e.g.,
 // in a requires clause).
