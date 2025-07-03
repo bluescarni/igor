@@ -388,9 +388,9 @@ struct all_required_arguments_are_present<config<Descrs...>> {
 };
 
 template <typename... Args>
-consteval bool validate_one_validator(auto descr)
+consteval bool validate_one_validator([[maybe_unused]] auto descr)
 {
-    auto check_single_arg = []<typename Arg>(auto d) {
+    [[maybe_unused]] auto check_single_arg = []<typename Arg>(auto d) {
         using arg_u = std::remove_cvref_t<Arg>;
 
         if constexpr (any_tagged_ref<arg_u>) {
