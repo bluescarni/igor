@@ -571,7 +571,7 @@ consteval bool has_duplicates()
 // The result is returned as a tuple of perfectly-forwarded references.
 template <auto... NArgs, typename... Args>
     requires(any_named_argument_cv<NArgs> && ...)
-constexpr auto pop_named_arguments(Args &&...args)
+constexpr auto reject_named_arguments(Args &&...args)
 {
     [[maybe_unused]] auto filter = []<typename T>(T &&x) {
         using Tu = std::remove_cvref_t<T>;
@@ -594,26 +594,77 @@ namespace detail
 {
 
 template <typename>
-struct pop_na_from_cfg;
+struct reject_na_from_cfg;
 
 template <auto... Descrs>
-struct pop_na_from_cfg<config<Descrs...>> {
+struct reject_na_from_cfg<config<Descrs...>> {
     template <typename... Args>
-    static constexpr auto run_pop_named_arguments(Args &&...args)
+    static constexpr auto run_reject_named_arguments(Args &&...args)
     {
-        return pop_named_arguments<Descrs.na...>(std::forward<Args>(args)...);
+        return reject_named_arguments<Descrs.na...>(std::forward<Args>(args)...);
     }
 };
 
 } // namespace detail
 
-// Same as the previous overload, except that the named arguments to pop are deduced from the input config.
+// Same as the previous overload, except that the named arguments to reject are deduced from the input config.
 template <auto Cfg, typename... Args>
     requires(detail::any_config_cv<Cfg>)
-constexpr auto pop_named_arguments(Args &&...args)
+constexpr auto reject_named_arguments(Args &&...args)
 {
     // Need to go through an auxiliary struct in order to recover the pack of descriptors.
-    return detail::pop_na_from_cfg<std::remove_cv_t<decltype(Cfg)>>::run_pop_named_arguments(
+    return detail::reject_na_from_cfg<std::remove_cv_t<decltype(Cfg)>>::run_reject_named_arguments(
+        std::forward<Args>(args)...);
+}
+
+// Remove from the set of variadic arguments args the named arguments *other than* NArgs.
+//
+// The result is returned as a tuple of perfectly-forwarded references.
+template <auto... NArgs, typename... Args>
+    requires(any_named_argument_cv<NArgs> && ...)
+constexpr auto filter_named_arguments(Args &&...args)
+{
+    [[maybe_unused]] auto filter = []<typename T>(T &&x) {
+        using Tu = std::remove_cvref_t<T>;
+
+        if constexpr (detail::any_tagged_ref<Tu>) {
+            if constexpr ((... || std::same_as<typename decltype(NArgs)::tag_type, typename Tu::tag_type>)) {
+                return std::forward_as_tuple(std::forward<T>(x));
+            } else {
+                return std::tuple{};
+            }
+        } else {
+            return std::forward_as_tuple(std::forward<T>(x));
+        }
+    };
+
+    return std::tuple_cat(filter(std::forward<Args>(args))...);
+}
+
+namespace detail
+{
+
+template <typename>
+struct filter_na_from_cfg;
+
+template <auto... Descrs>
+struct filter_na_from_cfg<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr auto run_filter_named_arguments(Args &&...args)
+    {
+        return filter_named_arguments<Descrs.na...>(std::forward<Args>(args)...);
+    }
+};
+
+} // namespace detail
+
+// Same as the previous overload, except that the named arguments to filter are deduced from the input config.
+template <auto Cfg, typename... Args>
+    requires(detail::any_config_cv<Cfg>)
+constexpr auto filter_named_arguments(Args &&...args)
+{
+    // Need to go through an auxiliary struct in order to recover the pack of descriptors.
+    return detail::filter_na_from_cfg<std::remove_cv_t<decltype(Cfg)>>::run_filter_named_arguments(
         std::forward<Args>(args)...);
 }
 
