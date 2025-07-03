@@ -447,6 +447,27 @@ TEST_CASE("pop_named_arguments")
     }
 }
 
+TEST_CASE("pop_named_arguments cfg")
+{
+    constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
+
+    {
+        const std::string foo = "hello world";
+        auto ret = pop_named_arguments<cfg1>(foo, arg2 = 6.7f);
+        REQUIRE(std::tuple_size_v<decltype(ret)> == 1u);
+        REQUIRE(&std::get<0>(ret) == &foo);
+    }
+
+    {
+        const std::string foo = "hello world";
+        int n = 6;
+        auto ret = pop_named_arguments<cfg1>(foo, arg2 = 6.7f, arg1 = 5, n);
+        REQUIRE(std::tuple_size_v<decltype(ret)> == 2u);
+        REQUIRE(&std::get<0>(ret) == &foo);
+        REQUIRE(&std::get<1>(ret) == &n);
+    }
+}
+
 // clang-format off
 // NOLINTEND(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
 // clang-format on

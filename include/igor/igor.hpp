@@ -593,6 +593,33 @@ constexpr auto pop_named_arguments(Args &&...args)
 namespace detail
 {
 
+template <typename>
+struct pop_na_from_cfg;
+
+template <auto... Descrs>
+struct pop_na_from_cfg<config<Descrs...>> {
+    template <typename... Args>
+    static constexpr auto run_pop_named_arguments(Args &&...args)
+    {
+        return pop_named_arguments<Descrs.na...>(std::forward<Args>(args)...);
+    }
+};
+
+} // namespace detail
+
+// Same as the previous overload, except that the named arguments to pop are deduced from the input config.
+template <auto Cfg, typename... Args>
+    requires(detail::any_config_cv<Cfg>)
+constexpr auto pop_named_arguments(Args &&...args)
+{
+    // Need to go through an auxiliary struct in order to recover the pack of descriptors.
+    return detail::pop_na_from_cfg<std::remove_cv_t<decltype(Cfg)>>::run_pop_named_arguments(
+        std::forward<Args>(args)...);
+}
+
+namespace detail
+{
+
 // Implementation of parsers' constructor.
 //
 // This function will examine all input arguments and return a tuple of references to the tagged reference arguments.
