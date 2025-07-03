@@ -43,6 +43,16 @@
 
 #endif
 
+// NOTE: currently we are employing several quadratic compile-time algorithms, e.g., when it comes to check for
+// uniqueness in a set of named arguments. Something like compile-time sorting or (perfect?) hashing would of course
+// perform better asymptotically, however at this time they seem to be really difficult to implement for types.
+//
+// Pointer-based approaches won't work at compile time because comparing pointers with '<' is well-defined only within
+// an array (and std::less does not help here because it has a special exception for compile-time behaviour). Hashing
+// has similar problems. Name-based approaches are fragile and compiler-specific (e.g., MSVC gives the same "name" to
+// all lambdas used as NTTP). Perhaps reflection (or constexpr-friendly typeid(), if we ever get it) could eventually
+// help here.
+
 namespace igor
 {
 
