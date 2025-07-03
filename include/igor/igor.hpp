@@ -487,6 +487,8 @@ consteval auto merge_cfg_impl(config<Descrs1...> c1, config<Descrs2...> c2)
 {
     // NOTE: here we are allowing merging between configurations with different settings. The merged config will adopt
     // the most permissive settings.
+    //
+    // NOTE: probably we want to give the option to customise the behaviour here eventually.
     return config<Descrs1..., Descrs2...>{.allow_unnamed = c1.allow_unnamed || c2.allow_unnamed,
                                           .allow_extra = c1.allow_extra || c2.allow_extra};
 }
