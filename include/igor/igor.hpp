@@ -481,26 +481,21 @@ consteval bool no_common_named_arguments(config<Descrs1...>, config<Descrs2...>)
     return (... && check_one(Descrs1, Descrs2...));
 }
 
+} // namespace detail
+
 // Implementation of binary configuration merging.
 template <auto... Descrs1, auto... Descrs2>
-consteval auto merge_cfg_impl(config<Descrs1...> c1, config<Descrs2...> c2)
+    requires(
+        // NOTE: we need to construct config instances on-the-fly from the descriptors in order to run
+        // no_common_named_arguments(). A bit yucky, but correct.
+        detail::no_common_named_arguments(config<Descrs1...>{}, config<Descrs2...>{}))
+consteval auto operator|(config<Descrs1...> c1, config<Descrs2...> c2)
 {
     // NOTE: here we are allowing merging between configurations with different settings. The merged config will adopt
     // the most permissive settings.
-    //
-    // NOTE: probably we want to give the option to customise the behaviour here eventually.
     return config<Descrs1..., Descrs2...>{.allow_unnamed = c1.allow_unnamed || c2.allow_unnamed,
                                           .allow_extra = c1.allow_extra || c2.allow_extra};
 }
-
-template <auto Cfg1, auto Cfg2>
-concept mergeable_configs = any_config_cv<Cfg1> && any_config_cv<Cfg2> && (no_common_named_arguments(Cfg1, Cfg2));
-
-} // namespace detail
-
-template <auto Cfg1, auto Cfg2>
-    requires detail::mergeable_configs<Cfg1, Cfg2>
-inline constexpr auto merge_config = detail::merge_cfg_impl(Cfg1, Cfg2);
 
 // NOTE: implement some of the parser functionality as free functions, which will then be wrapped by static constexpr
 // member functions in the parser class. These free functions can be used where a parser object is not available (e.g.,

@@ -140,6 +140,9 @@ TEST_CASE("no common named arguments")
     REQUIRE(!detail::no_common_named_arguments(cfg1, cfg3));
 }
 
+template <auto a, auto b>
+concept orable = requires() { std::declval<decltype(a)>() | std::declval<decltype(b)>(); };
+
 TEST_CASE("merge cfg")
 {
     constexpr auto cfg1 = config<descr<arg1>{.required = true}, descr<arg2>{}>{};
@@ -147,7 +150,7 @@ TEST_CASE("merge cfg")
 
     constexpr auto merge_validation
         = []<auto cfg, typename... KwArgs>(const KwArgs &...) { return validate<cfg, KwArgs...>; };
-    constexpr auto mcfg = merge_config<cfg1, cfg2>;
+    constexpr auto mcfg = cfg1 | cfg2;
     REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5)));
     REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6)));
     REQUIRE((merge_validation.operator()<mcfg>(arg1 = 5, arg3 = 6, arg2 = 2)));
@@ -155,18 +158,17 @@ TEST_CASE("merge cfg")
 
     // Check merging of configuration settings.
     constexpr auto cfg2a = config<descr<arg3>{}>{.allow_unnamed = true};
-    REQUIRE(detail::mergeable_configs<cfg1, cfg2a>);
-    REQUIRE((merge_config<cfg1, cfg2a>.allow_unnamed));
-    REQUIRE(!(merge_config<cfg1, cfg2a>.allow_extra));
+    REQUIRE((orable<cfg1, cfg2a>));
+    REQUIRE((cfg1 | cfg2a).allow_unnamed);
+    REQUIRE(!(cfg1 | cfg2a).allow_extra);
 
     constexpr auto cfg2b = config<descr<arg3>{}>{.allow_unnamed = true, .allow_extra = true};
-    REQUIRE(detail::mergeable_configs<cfg1, cfg2b>);
-    REQUIRE((merge_config<cfg1, cfg2b>.allow_unnamed));
-    REQUIRE((merge_config<cfg1, cfg2b>.allow_extra));
+    REQUIRE((cfg1 | cfg2b).allow_unnamed);
+    REQUIRE((cfg1 | cfg2b).allow_extra);
 
     // Test unmergeable configs due to overlapping named arguments.
     constexpr auto cfg2c = config<descr<arg1>{}, descr<arg3>{}>{};
-    REQUIRE(!detail::mergeable_configs<cfg1, cfg2c>);
+    REQUIRE((!orable<cfg1, cfg2c>));
 }
 
 // clang-format off
