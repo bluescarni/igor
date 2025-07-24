@@ -398,15 +398,15 @@ TEST_CASE("as_const")
     REQUIRE((std::same_as<const std::string &, decltype(as_const_outer(arg1 = foo))>));
 }
 
-TEST_CASE("reject_named_arguments")
+TEST_CASE("reject")
 {
-    REQUIRE(reject_named_arguments() == std::tuple{});
-    REQUIRE((std::same_as<decltype(reject_named_arguments(1, 2.3)), std::tuple<int &&, double &&>>));
+    REQUIRE(reject() == std::tuple{});
+    REQUIRE((std::same_as<decltype(reject(1, 2.3)), std::tuple<int &&, double &&>>));
 
     {
         const std::string foo = "hello world";
         double x = 42;
-        auto ret = reject_named_arguments(foo, x);
+        auto ret = reject(foo, x);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
         REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
@@ -415,7 +415,7 @@ TEST_CASE("reject_named_arguments")
     {
         const std::string foo = "hello world";
         double x = 42;
-        auto ret = reject_named_arguments(foo, x);
+        auto ret = reject(foo, x);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
         REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
@@ -426,7 +426,7 @@ TEST_CASE("reject_named_arguments")
         double x = 42;
         int n = 25;
         const auto tref = (arg1 = n);
-        auto ret = reject_named_arguments<arg2>(foo, tref, x, arg2 = 6.7f);
+        auto ret = reject<arg2>(foo, tref, x, arg2 = 6.7f);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 3u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret).value == &n);
@@ -440,20 +440,20 @@ TEST_CASE("reject_named_arguments")
         const auto tref1 = (arg1 = n);
         auto f = 6.7f;
         const auto tref2 = (arg2 = f);
-        auto ret = reject_named_arguments<arg1, arg2>(foo, tref1, x, tref2);
+        auto ret = reject<arg1, arg2>(foo, tref1, x, tref2);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 2u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
     }
 }
 
-TEST_CASE("reject_named_arguments cfg")
+TEST_CASE("reject cfg")
 {
     constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
 
     {
         const std::string foo = "hello world";
-        auto ret = reject_named_arguments<cfg1>(foo, arg2 = 6.7f);
+        auto ret = reject<cfg1>(foo, arg2 = 6.7f);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 1u);
         REQUIRE(&std::get<0>(ret) == &foo);
     }
@@ -461,22 +461,22 @@ TEST_CASE("reject_named_arguments cfg")
     {
         const std::string foo = "hello world";
         int n = 6;
-        auto ret = reject_named_arguments<cfg1>(foo, arg2 = 6.7f, arg1 = 5, n);
+        auto ret = reject<cfg1>(foo, arg2 = 6.7f, arg1 = 5, n);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 2u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &n);
     }
 }
 
-TEST_CASE("filter_named_arguments")
+TEST_CASE("filter")
 {
-    REQUIRE(filter_named_arguments() == std::tuple{});
-    REQUIRE((std::same_as<decltype(filter_named_arguments(1, 2.3)), std::tuple<int &&, double &&>>));
+    REQUIRE(filter() == std::tuple{});
+    REQUIRE((std::same_as<decltype(filter(1, 2.3)), std::tuple<int &&, double &&>>));
 
     {
         const std::string foo = "hello world";
         double x = 42;
-        auto ret = filter_named_arguments(foo, x);
+        auto ret = filter(foo, x);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
         REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
@@ -485,7 +485,7 @@ TEST_CASE("filter_named_arguments")
     {
         const std::string foo = "hello world";
         double x = 42;
-        auto ret = filter_named_arguments(foo, x);
+        auto ret = filter(foo, x);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
         REQUIRE((std::same_as<decltype(ret), std::tuple<const std::string &, double &>>));
@@ -496,7 +496,7 @@ TEST_CASE("filter_named_arguments")
         double x = 42;
         int n = 25;
         const auto tref = (arg1 = n);
-        auto ret = filter_named_arguments<arg1>(foo, tref, x, arg2 = 6.7f);
+        auto ret = filter<arg1>(foo, tref, x, arg2 = 6.7f);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 3u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret).value == &n);
@@ -510,7 +510,7 @@ TEST_CASE("filter_named_arguments")
         const auto tref1 = (arg1 = n);
         auto f = 6.7f;
         const auto tref2 = (arg2 = f);
-        auto ret = filter_named_arguments<arg2>(foo, tref1, x, tref2);
+        auto ret = filter<arg2>(foo, tref1, x, tref2);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 3u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret) == &x);
@@ -518,7 +518,7 @@ TEST_CASE("filter_named_arguments")
     }
 }
 
-TEST_CASE("filter_named_arguments cfg")
+TEST_CASE("filter cfg")
 {
     constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
 
@@ -526,7 +526,7 @@ TEST_CASE("filter_named_arguments cfg")
         const std::string foo = "hello world";
         auto tmp = 6.7f;
         const auto tref = (arg2 = tmp);
-        auto ret = filter_named_arguments<cfg1>(foo, tref);
+        auto ret = filter<cfg1>(foo, tref);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 2u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret).value == &tmp);
@@ -539,7 +539,7 @@ TEST_CASE("filter_named_arguments cfg")
         auto tmp2 = 6.7f;
         const auto tref2 = (arg2 = tmp2);
         int n = 6;
-        auto ret = filter_named_arguments<cfg1>(foo, tref2, tref1, n);
+        auto ret = filter<cfg1>(foo, tref2, tref1, n);
         REQUIRE(std::tuple_size_v<decltype(ret)> == 4u);
         REQUIRE(&std::get<0>(ret) == &foo);
         REQUIRE(&std::get<1>(ret).value == &tmp2);
