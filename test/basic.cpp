@@ -548,6 +548,29 @@ TEST_CASE("filter_named_arguments cfg")
     }
 }
 
+TEST_CASE("default value")
+{
+    {
+        const auto f = []<typename... KwArgs>(const KwArgs &...kw_args) {
+            const parser p{kw_args...};
+            return p(arg1, 42);
+        };
+
+        REQUIRE(f(arg1 = -1.) == -1.);
+        REQUIRE(f() == 42);
+    }
+
+    {
+        const auto f = []<typename... KwArgs>(const KwArgs &...kw_args) {
+            const parser p{kw_args...};
+            return p(arg1, std::vector{1, 2, 3});
+        };
+
+        REQUIRE(f(arg1 = -1.) == -1.);
+        REQUIRE(f() == std::vector{1, 2, 3});
+    }
+}
+
 // clang-format off
 // NOLINTEND(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
 // clang-format on

@@ -686,7 +686,11 @@ constexpr auto parser_ctor_impl(const auto &...args)
 } // namespace detail
 
 // Parser for named arguments in a function call.
+//
+// NOTE: the template arguments are intended to always be deduced via the constructor and never explicitly passed. Thus,
+// they should never end up being cvref-qualified.
 template <typename... ParseArgs>
+    requires(std::same_as<ParseArgs, std::remove_cvref_t<ParseArgs>> && ...)
 class parser
 {
     using tuple_t = decltype(detail::parser_ctor_impl(std::declval<const ParseArgs &>()...));
@@ -731,6 +735,22 @@ public:
             return this->fetch_one_impl<0>(nargs...);
         } else {
             return std::forward_as_tuple(this->fetch_one_impl<0>(nargs)...);
+        }
+    }
+    // Get a reference to the value associated to the input named argument, if present, otherwise return a default
+    // value. The default value is returned as a new object constructed from perfectly forwarding 'def'.
+    //
+    // NOTE: T cannot be a named argument, otherwise this will be an ambiguous overload with the other call operator.
+    template <typename Tag, typename ExplicitType, typename T>
+        requires(!detail::is_any_named_argument<std::remove_cvref_t<T>>::value)
+                && std::constructible_from<std::remove_cvref_t<T>, T &&>
+    constexpr decltype(auto) operator()(const named_argument<Tag, ExplicitType> &narg, T &&def) const
+    {
+        // NOTE: this condition is equivalent to invoking has().
+        if constexpr ((... || detail::is_tagged_ref<Tag, ParseArgs>::value)) {
+            return this->fetch_one_impl<0>(narg);
+        } else {
+            return std::remove_cvref_t<T>(std::forward<T>(def));
         }
     }
     // Check if the input named argument na is present in the parser.
