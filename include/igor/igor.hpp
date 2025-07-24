@@ -209,9 +209,9 @@ struct is_any_named_argument<named_argument<Tag, ExplicitType>> : std::true_type
 
 } // namespace detail
 
-// Concept to detect cv-qualified named arguments.
+// Concept to detect (const) named arguments.
 template <auto NA>
-concept any_named_argument_cv = detail::is_any_named_argument<std::remove_const_t<decltype(NA)>>::value;
+concept any_named_argument = detail::is_any_named_argument<std::remove_const_t<decltype(NA)>>::value;
 
 namespace detail
 {
@@ -231,7 +231,7 @@ concept valid_descr_validator = requires {
 };
 
 template <auto NA, auto Validator = []<typename>() { return true; }>
-    requires any_named_argument_cv<NA>
+    requires any_named_argument<NA>
 struct descr {
     // Configuration options.
     bool required = false;
@@ -261,9 +261,9 @@ struct is_any_descr<descr<NA, Validator>> : std::true_type {
 
 } // namespace detail
 
-// Concept to detect cv-qualified descriptors.
+// Concept to detect (const) descriptors.
 template <auto Descr>
-concept any_descr_cv = detail::is_any_descr<std::remove_const_t<decltype(Descr)>>::value;
+concept any_descr = detail::is_any_descr<std::remove_const_t<decltype(Descr)>>::value;
 
 namespace detail
 {
@@ -289,7 +289,7 @@ concept no_duplicate_descrs = detail::no_duplicate_descrs_impl(Descrs...);
 
 // Configuration structure for named arguments validation.
 template <auto... Descrs>
-    requires(sizeof...(Descrs) > 0u) && (... && any_descr_cv<Descrs>) && no_duplicate_descrs<Descrs...>
+    requires(sizeof...(Descrs) > 0u) && (... && any_descr<Descrs>) && no_duplicate_descrs<Descrs...>
 struct config {
     // Config options.
     bool allow_unnamed = false;
@@ -308,9 +308,9 @@ template <auto... Descrs>
 struct is_any_config<config<Descrs...>> : std::true_type {
 };
 
-// Concept to detect a cv qualified instance of the config class.
+// Concept to detect (const) instances of the config class.
 template <auto Cfg>
-concept any_config_cv = is_any_config<std::remove_const_t<decltype(Cfg)>>::value;
+concept any_config = is_any_config<std::remove_const_t<decltype(Cfg)>>::value;
 
 template <auto Cfg, typename... Args>
 concept validate_unnamed_arguments = (Cfg.allow_unnamed) || (any_tagged_ref<std::remove_cvref_t<Args>> && ...);
@@ -451,7 +451,7 @@ struct validate_named_arguments<config<Descrs...>> {
 template <auto Cfg, typename... Args>
 concept validate = requires {
     // Step 0: check that Cfg is a config instance.
-    requires detail::any_config_cv<Cfg>;
+    requires detail::any_config<Cfg>;
     // Step 1: validate the unnamed arguments.
     requires detail::validate_unnamed_arguments<Cfg, Args...>;
     // Step 2: check that there are no duplicate named arguments in Args.
@@ -565,7 +565,7 @@ consteval bool has_duplicates()
 //
 // The result is returned as a tuple of perfectly-forwarded references.
 template <auto... NArgs, typename... Args>
-    requires(any_named_argument_cv<NArgs> && ...)
+    requires(any_named_argument<NArgs> && ...)
 constexpr auto reject_named_arguments(Args &&...args)
 {
     [[maybe_unused]] auto filter = []<typename T>(T &&x) {
@@ -604,7 +604,7 @@ struct reject_na_from_cfg<config<Descrs...>> {
 
 // Same as the previous overload, except that the named arguments to reject are deduced from the input config.
 template <auto Cfg, typename... Args>
-    requires(detail::any_config_cv<Cfg>)
+    requires(detail::any_config<Cfg>)
 constexpr auto reject_named_arguments(Args &&...args)
 {
     // Need to go through an auxiliary struct in order to recover the pack of descriptors.
@@ -616,7 +616,7 @@ constexpr auto reject_named_arguments(Args &&...args)
 //
 // The result is returned as a tuple of perfectly-forwarded references.
 template <auto... NArgs, typename... Args>
-    requires(any_named_argument_cv<NArgs> && ...)
+    requires(any_named_argument<NArgs> && ...)
 constexpr auto filter_named_arguments(Args &&...args)
 {
     [[maybe_unused]] auto filter = []<typename T>(T &&x) {
@@ -655,7 +655,7 @@ struct filter_na_from_cfg<config<Descrs...>> {
 
 // Same as the previous overload, except that the named arguments to filter are deduced from the input config.
 template <auto Cfg, typename... Args>
-    requires(detail::any_config_cv<Cfg>)
+    requires(detail::any_config<Cfg>)
 constexpr auto filter_named_arguments(Args &&...args)
 {
     // Need to go through an auxiliary struct in order to recover the pack of descriptors.
