@@ -571,6 +571,130 @@ TEST_CASE("default value")
     }
 }
 
+TEST_CASE("reject_invoke")
+{
+    static constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
+
+    {
+        const auto f = [](const auto &...kw_args) {
+            return reject_invoke<cfg1>(
+                [](const auto &...fargs) {
+                    const auto impl = []<typename T>(const T &arg) {
+                        if constexpr (detail::is_tagged_ref_any<T>::value) {
+                            return arg.value;
+                        } else {
+                            return arg;
+                        }
+                    };
+
+                    return std::make_tuple(impl(fargs)...);
+                },
+                kw_args...);
+        };
+
+        REQUIRE(f(arg1 = 1, 2, 3, arg2 = 4) == std::tuple{2, 3});
+        REQUIRE(f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == std::tuple{12, 2, 3});
+    }
+
+    // NOTE: same test with a set of named arguments in input, rather than a config instance.
+    {
+        const auto f = [](const auto &...kw_args) {
+            return reject_invoke<arg1, arg2>(
+                [](const auto &...fargs) {
+                    const auto impl = []<typename T>(const T &arg) {
+                        if constexpr (detail::is_tagged_ref_any<T>::value) {
+                            return arg.value;
+                        } else {
+                            return arg;
+                        }
+                    };
+
+                    return std::make_tuple(impl(fargs)...);
+                },
+                kw_args...);
+        };
+
+        REQUIRE(f(arg1 = 1, 2, 3, arg2 = 4) == std::tuple{2, 3});
+        REQUIRE(f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == std::tuple{12, 2, 3});
+    }
+
+    {
+        // NOTE: here we want to check that we are correctly perfectly forwarding the result of the functor passed to
+        // reject_invoke().
+        const std::string s = "hello world";
+
+        const auto f = [&s](const auto &...kw_args) -> decltype(auto) {
+            return reject_invoke<cfg1>([&s](const auto &...) -> decltype(auto) { return std::as_const(s); },
+                                       kw_args...);
+        };
+
+        REQUIRE(&f(arg1 = 1, 2, 3, arg2 = 4) == &s);
+        REQUIRE(&f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == &s);
+    }
+}
+
+TEST_CASE("filter_invoke")
+{
+    static constexpr auto cfg1 = config<descr<arg1>{}, descr<arg2>{}>{};
+
+    {
+        const auto f = [](const auto &...kw_args) {
+            return filter_invoke<cfg1>(
+                [](const auto &...fargs) {
+                    const auto impl = []<typename T>(const T &arg) {
+                        if constexpr (detail::is_tagged_ref_any<T>::value) {
+                            return arg.value;
+                        } else {
+                            return arg;
+                        }
+                    };
+
+                    return std::make_tuple(impl(fargs)...);
+                },
+                kw_args...);
+        };
+
+        REQUIRE(f(arg1 = 1, 2, 3, arg2 = 4) == std::tuple{1, 2, 3, 4});
+        REQUIRE(f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == std::tuple{1, 2, 3, 4});
+    }
+
+    // NOTE: same test with a set of named arguments in input, rather than a config instance.
+    {
+        const auto f = [](const auto &...kw_args) {
+            return filter_invoke<arg2, arg1>(
+                [](const auto &...fargs) {
+                    const auto impl = []<typename T>(const T &arg) {
+                        if constexpr (detail::is_tagged_ref_any<T>::value) {
+                            return arg.value;
+                        } else {
+                            return arg;
+                        }
+                    };
+
+                    return std::make_tuple(impl(fargs)...);
+                },
+                kw_args...);
+        };
+
+        REQUIRE(f(arg1 = 1, 2, 3, arg2 = 4) == std::tuple{1, 2, 3, 4});
+        REQUIRE(f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == std::tuple{1, 2, 3, 4});
+    }
+
+    {
+        // NOTE: here we want to check that we are correctly perfectly forwarding the result of the functor passed to
+        // filter_invoke().
+        const std::string s = "hello world";
+
+        const auto f = [&s](const auto &...kw_args) -> decltype(auto) {
+            return filter_invoke<cfg1>([&s](const auto &...) -> decltype(auto) { return std::as_const(s); },
+                                       kw_args...);
+        };
+
+        REQUIRE(&f(arg1 = 1, 2, 3, arg2 = 4) == &s);
+        REQUIRE(&f(arg1 = 1, arg3 = 12, 2, 3, arg2 = 4) == &s);
+    }
+}
+
 // clang-format off
 // NOLINTEND(misc-use-internal-linkage,google-build-using-namespace,cppcoreguidelines-avoid-do-while,misc-use-anonymous-namespace,cert-err58-cpp)
 // clang-format on

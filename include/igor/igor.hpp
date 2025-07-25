@@ -664,6 +664,41 @@ constexpr auto filter(Args &&...args)
 namespace detail
 {
 
+// Type trait to detect if a function object can be invoked with the elements of a tuple as arguments.
+template <typename, typename>
+struct tuple_invocable;
+
+template <typename F, typename... Args>
+struct tuple_invocable<F, std::tuple<Args...>> : std::is_invocable<F, Args...> {
+};
+
+} // namespace detail
+
+// Reject named arguments from the set of variadic arguments args and invoke F on the result.
+template <auto... CfgOrNArgs, typename F, typename... Args>
+    requires requires {
+        reject<CfgOrNArgs...>(std::declval<Args>()...);
+        requires detail::tuple_invocable<F, decltype(reject<CfgOrNArgs...>(std::declval<Args>()...))>::value;
+    }
+constexpr decltype(auto) reject_invoke(F &&f, Args &&...args)
+{
+    return std::apply(std::forward<F>(f), reject<CfgOrNArgs...>(std::forward<Args>(args)...));
+}
+
+// Filter named arguments from the set of variadic arguments args and invoke F on the result.
+template <auto... CfgOrNArgs, typename F, typename... Args>
+    requires requires {
+        filter<CfgOrNArgs...>(std::declval<Args>()...);
+        requires detail::tuple_invocable<F, decltype(filter<CfgOrNArgs...>(std::declval<Args>()...))>::value;
+    }
+constexpr decltype(auto) filter_invoke(F &&f, Args &&...args)
+{
+    return std::apply(std::forward<F>(f), filter<CfgOrNArgs...>(std::forward<Args>(args)...));
+}
+
+namespace detail
+{
+
 // Implementation of parsers' constructor.
 //
 // This function will examine all input arguments and return a tuple of references to the tagged reference arguments.
