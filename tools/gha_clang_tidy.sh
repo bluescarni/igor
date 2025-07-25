@@ -6,12 +6,15 @@ set -x
 # Exit on error.
 set -e
 
+# Core deps.
+sudo apt-get install wget
+
 # Install conda+deps.
-wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh -O miniconda.sh
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniconda.sh
 export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 bash miniconda.sh -b -p $HOME/miniconda
-conda create -y -p $deps_dir cmake ninja 'clang=14.*' 'clangxx=14.*'
+conda create -y -p $deps_dir ninja cmake c-compiler cxx-compiler clang clangxx clang-tools
 source activate $deps_dir
 
 # Create the build dir and cd into it.
@@ -25,16 +28,14 @@ unset CFLAGS
 # Configure.
 cmake ../ -G Ninja \
     -DCMAKE_PREFIX_PATH=$deps_dir \
-    -DCMAKE_CXX_COMPILER=clang++ \
     -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -Og" \
     -DIGOR_BUILD_TESTS=yes \
-    -DCMAKE_CXX_FLAGS_DEBUG="-g -Og"
+    -DCMAKE_CXX_CLANG_TIDY=`which clang-tidy` \
+    -DCMAKE_CXX_COMPILER=clang++
 
 # Build.
 ninja -v
-
-# Run the tests.
-ctest -VV -j4
 
 set +e
 set +x
