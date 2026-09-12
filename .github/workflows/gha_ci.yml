@@ -26,6 +26,8 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
+          # See: https://github.com/conda-incubator/setup-miniconda?tab=readme-ov-file#example-14-remove-defaults-channel
+          conda-remove-defaults: "true"
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Build
         shell: pwsh
@@ -36,3 +38,20 @@ jobs:
           cmake ../ -G "Visual Studio 17 2022" -A x64 -DIGOR_BUILD_TESTS=yes
           cmake --build . --config Debug -j2
           ctest -j4 -V -C Debug
+  clang_tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash tools/gha_clang_tidy.sh
+  sanitize:
+     runs-on: ubuntu-latest
+     strategy:
+       matrix:
+         sanitizer: ["address", "undefined"]
+     env:
+       IGOR_SANITIZER: ${{ matrix.sanitizer }}
+     steps:
+       - uses: actions/checkout@v4
+       - name: Build
+         run: bash tools/gha_sanitize.sh

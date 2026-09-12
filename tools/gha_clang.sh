@@ -26,7 +26,6 @@ unset CFLAGS
 cmake ../ -G Ninja \
     -DCMAKE_PREFIX_PATH=$deps_dir \
     -DCMAKE_CXX_COMPILER=clang++ \
-    -DCMAKE_C_COMPILER=clang \
     -DCMAKE_BUILD_TYPE=Debug \
     -DIGOR_BUILD_TESTS=yes \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -Og"
